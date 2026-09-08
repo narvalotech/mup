@@ -8,3 +8,7 @@ rustflags = [
 
 [build]
 target = "thumbv8m.main-none-eabihf"
+
+[future-incompat-report]
+# silence this guy https://github.com/rust-lang/rust/issues/127909
+frequency = "never"

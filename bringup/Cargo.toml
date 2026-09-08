@@ -32,3 +32,6 @@ debug = true
 build = [
   { target = "thumbv8m.main-none-eabihf", artifact-dir = "out" }
 ]
+
+[lints.rust]
+linker_messages = "allow" # gets rid of 8-byte alignment message
