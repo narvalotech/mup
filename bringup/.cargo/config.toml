@@ -1,4 +1,5 @@
 [target.thumbv8m.main-none-eabihf]
+# runner = "picotool load -u -v -x -t elf"
 runner = "probe-rs run --chip RP235x"
 rustflags = [
   "-C", "linker=flip-link",
