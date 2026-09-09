@@ -10,9 +10,15 @@ use embassy_rp::otp;
 use embassy_time::Timer;
 use panic_probe as _;
 
+#[unsafe(link_section = ".start_block")]
+#[used]
+pub static IMAGE_DEF: embassy_rp::block::ImageDef = embassy_rp::block::ImageDef::secure_exe();
+
 #[embassy_executor::main]
 async fn main(_spawner: Spawner) {
     let _ = embassy_rp::init(Default::default());
+
+    info!("Hello!");
 
     Timer::after_millis(10).await; // flash read delay. might be unnecessary.
 
