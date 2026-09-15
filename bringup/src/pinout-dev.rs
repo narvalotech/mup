@@ -16,10 +16,9 @@
 // P03 - SD_MOSI
 // P04 - SD_MISO
 //
-// DAC
+// DAC - I2S "0"
 // Pxx - DAC_RST
 // Pxx - DAC_CLKOUT (is this an input?)
-// P03 - LRCK / WS
-// P04 - SCLK / SCLK
-// P02 - SDIN / SD
-// P23 - MCLK
+// P17 - LRCK / WS
+// P16 - SCLK / SCLK
+// P18 - SDIN / SD
