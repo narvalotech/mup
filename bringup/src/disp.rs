@@ -22,19 +22,14 @@ use mipidsi::options::{Orientation, Rotation};
 use static_cell::StaticCell;
 use panic_probe as _;
 
+use crate::DisplayResources;
+
 const DISPLAY_FREQ: u32 = 32_000_000;
 
-pub async fn test_display(p: embassy_rp::Peripherals) {
+pub async fn test_display(rd: DisplayResources) {
     info!("Test display");
 
-    let bl = p.PIN_14;
-    let rst = p.PIN_12;
-    let display_cs = p.PIN_9;
-    let dcx = p.PIN_13;
-    // let miso = p.PIN_;
-    let mosi = p.PIN_11;
-    let clk = p.PIN_10;
-    let display_cs_output = Output::new(display_cs, Level::High);
+    let display_cs_output = Output::new(rd.cs, Level::High);
 
     // create SPI
     let mut display_config = spi::Config::default();
@@ -42,7 +37,7 @@ pub async fn test_display(p: embassy_rp::Peripherals) {
     display_config.phase = spi::Phase::CaptureOnSecondTransition;
     display_config.polarity = spi::Polarity::IdleHigh;
 
-    let spi = Spi::new_blocking_txonly(p.SPI1, clk, mosi, display_config.clone());
+    let spi = Spi::new_blocking_txonly(rd.spi, rd.sck, rd.mosi, display_config.clone());
 
     // I don't really understand all this mutex/refcell stuff yet..
     static SPI_BUS: StaticCell<Mutex<NoopRawMutex, RefCell<Spi<'static, embassy_rp::peripherals::SPI1, Blocking>>>> =
@@ -50,12 +45,12 @@ pub async fn test_display(p: embassy_rp::Peripherals) {
     let spi_bus_mutex = SPI_BUS.init(Mutex::new(RefCell::new(spi)));
     let display_spi = SpiDeviceWithConfig::new(spi_bus_mutex, display_cs_output, display_config);
 
-    let dcx = Output::new(dcx, Level::Low);
-    let rst = Output::new(rst, Level::Low);
+    let dcx = Output::new(rd.dc, Level::Low);
+    let rst = Output::new(rd.res, Level::Low);
     // dcx: 0 = command, 1 = data
 
     // Enable LCD backlight
-    let _bl = Output::new(bl, Level::High);
+    let _bl = Output::new(rd.blk, Level::High);
 
     // display interface abstraction from SPI and DC
     let di = SPIInterface::new(display_spi, dcx);

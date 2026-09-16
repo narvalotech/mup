@@ -10,6 +10,8 @@ use embedded_sdmmc::{SdCard, TimeSource, Timestamp, VolumeIdx, VolumeManager};
 use core::ops::ControlFlow;
 use panic_probe as _;
 
+use crate::SdResources;
+
 /// embedded-sdmmc needs a time source for file timestamps. We don't have an
 /// RTC here, so just return a fixed bogus time.
 struct DummyTimesource();
@@ -27,14 +29,14 @@ impl TimeSource for DummyTimesource {
     }
 }
 
-pub async fn test_sd(p: embassy_rp::Peripherals) {
+pub async fn test_sd(rsd: SdResources) {
     info!("Test SD card");
 
     let mut spi_config = SpiConfig::default();
     spi_config.frequency = 400_000;
 
-    let spi = Spi::new_blocking(p.SPI0, p.PIN_2, p.PIN_3, p.PIN_4, spi_config);
-    let cs = Output::new(p.PIN_5, Level::High);
+    let spi = Spi::new_blocking(rsd.spi, rsd.sck, rsd.mosi, rsd.miso, spi_config);
+    let cs = Output::new(rsd.cs, Level::High);
 
     let spi_dev = unwrap!(ExclusiveDevice::new(spi, cs, Delay).map_err(|_| ()));
     let sdcard = SdCard::new(spi_dev, Delay);

@@ -1,22 +1,14 @@
-//! This example shows generating audio and sending it to a connected i2s DAC using the PIO
-//! module of the RP235x.
-//!
-//! Connect the i2s DAC as follows:
-//!   bclk : GPIO 18
-//!   lrc  : GPIO 19
-//!   din  : GPIO 20
-//! Two triangle waves play immediately on boot, one octave apart
-//! (left = LEFT_FREQ, right = 2x LEFT_FREQ).
-
 use core::mem;
 
 use defmt_rtt as _;
-use embassy_rp::peripherals::{DMA_CH0, PIO0};
 use embassy_rp::pio::{InterruptHandler, Pio};
 use embassy_rp::pio_programs::i2s::{PioI2sOut, PioI2sOutProgram};
 use embassy_rp::{bind_interrupts, dma};
+use embassy_rp::peripherals::{DMA_CH0, PIO0};
 use panic_probe as _;
 use static_cell::StaticCell;
+
+use crate::DacResources;
 
 bind_interrupts!(struct Irqs {
     PIO0_IRQ_0 => InterruptHandler<PIO0>;
@@ -29,7 +21,6 @@ const BIT_DEPTH: u32 = 16;
 const LEFT_FREQ: u32 = 220; // A3
 const RIGHT_FREQ: u32 = 440; // A4, one octave above left
 
-// phase accumulators wrap at 16 bits, same trick as the original code
 fn phase_step(freq_hz: u32) -> i32 {
     ((freq_hz << 16) / SAMPLE_RATE) as i32
 }
@@ -38,19 +29,23 @@ fn triangle_sample(phase: i32) -> i32 {
     (phase as i16 as i32).abs() - 16384
 }
 
-pub async fn test_dac(p: embassy_rp::Peripherals) {
+pub async fn test_dac(rd: DacResources) {
     // Setup pio state machine for i2s output
-    let Pio { mut common, sm0, .. } = Pio::new(p.PIO0, Irqs);
+    let Pio { mut common, sm0, .. } = Pio::new(rd.pio, Irqs);
 
-    let bit_clock_pin = p.PIN_16;
-    let left_right_clock_pin = p.PIN_17;
-    let data_pin = p.PIN_18;
+    // Library pinout limitation:
+    // LRCK = BCLK + 1
+    // => motherboard has LRCK = BCLK - 1 :'(
+    // To test PIO mod, swap the two wires on the devboard
+    let bit_clock_pin = rd.sclk;
+    let left_right_clock_pin = rd.lrck;
+    let data_pin = rd.din;
 
     let program = PioI2sOutProgram::new(&mut common);
     let mut i2s = PioI2sOut::new(
         &mut common,
         sm0,
-        p.DMA_CH0,
+        rd.dma,
         Irqs,
         data_pin,
         bit_clock_pin,
@@ -87,7 +82,6 @@ pub async fn test_dac(p: embassy_rp::Peripherals) {
             let right_sample = triangle_sample(right_phase);
 
             // pack left into upper 16 bits, right into lower 16 bits;
-            // swap the shift if your channels come out reversed
             *s = ((left_sample as u16 as u32) << 16) | (right_sample as u16 as u32);
         }
 

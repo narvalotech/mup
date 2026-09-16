@@ -10,9 +10,16 @@ use panic_probe as _;
 pub mod sd;
 pub mod disp;
 pub mod dac;
+pub mod pinout_dev;
 
-// use crate::sd::test_sd;
-// use crate::disp::test_display;
+use crate::pinout_dev as pinout;
+use pinout::{DisplayResources, SdResources, DacResources, AssignedResources};
+
+#[allow(unused_imports)]
+use crate::sd::test_sd;
+#[allow(unused_imports)]
+use crate::disp::test_display;
+#[allow(unused_imports)]
 use crate::dac::test_dac;
 
 #[unsafe(link_section = ".start_block")]
@@ -22,13 +29,14 @@ pub static IMAGE_DEF: embassy_rp::block::ImageDef = embassy_rp::block::ImageDef:
 #[embassy_executor::main]
 async fn main(_spawner: Spawner) {
     let p = embassy_rp::init(Default::default());
+    let r = split_resources!(p);
 
     info!("Hello!");
     Timer::after_millis(100).await;
 
-    // test_sd(p).await;
-    // test_display(p).await;
-    test_dac(p).await;
+    test_sd(r.sd).await;
+    test_display(r.disp).await;
+    test_dac(r.dac).await;
 
     loop {
         Timer::after_secs(1).await;
