@@ -26,6 +26,12 @@ use assign_resources::assign_resources;
 
 
 assign_resources! {
+    i2c: I2CResources {
+        i2c: I2C1,              // I2C1 on prod
+        sda: PIN_6,             // 18 on prod
+        scl: PIN_7,             // 19 on prod
+    },
+
     dac: DacResources {
         dma: DMA_CH0,
         pio: PIO0,
