@@ -1,0 +1,15 @@
+device Dac {
+    register-address-type: u32,
+    default-byte-order: LE,
+    default-access: RW,
+
+    // dummy regs
+    register status {
+        address: 0x000001,
+        fields: fieldset _ {
+            size-bytes: 1,
+            field ready 0 -> bool,
+            field error_code 7:1 -> uint,
+        },
+    },
+}

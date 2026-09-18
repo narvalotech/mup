@@ -33,6 +33,7 @@ display-interface-spi = "0.5.0"
 display-interface = "0.5.0"
 static_cell = "2.1.1"
 assign-resources = "0.5.0"
+device-driver = { version = "2.1.1", features = ["macros"] }
 
 [profile.release]
 # Enable generation of debug symbols even on release builds

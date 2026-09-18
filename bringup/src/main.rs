@@ -10,10 +10,11 @@ use panic_probe as _;
 pub mod sd;
 pub mod disp;
 pub mod dac;
+pub mod dac_init;
 pub mod pinout_dev;
 
 use crate::pinout_dev as pinout;
-use pinout::{DisplayResources, SdResources, DacResources, AssignedResources};
+use pinout::{DisplayResources, I2CResources, SdResources, DacResources, AssignedResources};
 
 #[allow(unused_imports)]
 use crate::sd::test_sd;
@@ -21,6 +22,10 @@ use crate::sd::test_sd;
 use crate::disp::test_display;
 #[allow(unused_imports)]
 use crate::dac::test_dac;
+#[allow(unused_imports)]
+use crate::dac_init::test_dac_init;
+
+device_driver::compile!(manifest: "cs43131.ddsl");
 
 #[unsafe(link_section = ".start_block")]
 #[used]
@@ -37,7 +42,7 @@ async fn main(_spawner: Spawner) {
     test_sd(r.sd).await;
     test_display(r.disp).await;
     test_dac(r.dac).await;
-    test_dac_init(r.dac_cs).await;
+    test_dac_init(r.i2c).await;
 
     loop {
         Timer::after_secs(1).await;

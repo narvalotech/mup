@@ -1,6 +1,68 @@
 use crate::I2CResources;
 
-pub async fn test_dac(_rd: DacResources) {
+pub async fn test_dac_init(_rd: I2CResources) {
+    // I2C details:
+    // - 100/400kHz speed
+    // - I2C address: 0b01100xxy
+    //   last two bits: 00 (ADR = GND) -> 0b0110000y
+    //
+    // Write:
+    // | 1       | 3        | 1       | n    |
+    // | address | register | control | data |
+    // control b0: 1 for autoincrement
+    // register is big-endian
+
+    // Changes for using PLL clock input through the XTI/MCLK pin
+    // Will feed 12 MHz (using GPOUT1)
+    // For 22.5792 MCLK:
+    // - PLL_REF_PREDIV: 0x02 (factor 4)
+    // - PLL_DIV_INT:    0x49
+    // - PLL_DIV_FRAC:   0x80 0000
+    // - PLL_OUT_DIV:    0x0A
+    // - PLL_MODE:       0
+    // - PLL_OUT:        22.5792 MHz
+    // - PLL_CAL_RATIO:  120
+    //
+    // MCLK_SRC_SEL = 0x01 (PLL)
+    // MCLK_INT = 0 (f 24.576MHz)
+    // PDN_PLL = 0
+
+    // PLL power-up sequence:
+    // 1. PDN_PLL = 0
+    // 2. Set PLL_REF_PREDIV
+    // 3. Set PLL_OUT_DIV
+    // 4. Set PLL_DIV_FRAC
+    // 5. Set PLL_DIV_INT
+    // 6. Set PLL_MODE & PLL_CAL_RATION
+    // 7. Clear PLL_READY_INT_MASK & PLL_ERROR_INT_MASK
+    //    Wait for PLL_READY_INT or PLL_ERROR_INT
+    // 8. PLL_START = 1
+
+    // Init sequence with PLL
+    // 1. Apply power, assert RESET
+    // 2. Wait 1.5ms
+    // 3. Configure PLL:
+    // 4. [20000] PDN_PLL = 0
+    // 5. [40002] PLL_REF_PREDIV
+    // 6. [30008] PLL_OUT_DIV
+    // 7. [30002] PLL_DIV_FRAC_0 (LSB)
+    //    [30003] PLL_DIV_FRAC_1
+    //    [30004] PLL_DIV_FRAC_2 (MSB)
+    // 8. [30005] PLL_DIV_INT
+    // 9. [3001B] PLL_MODE
+    // 10.[F0000] read ISR
+    // 11.[3000A] PLL_CAL_RATIO
+    // 12.[F0010] Enable PLL_READ_INT & PLL_ERROR_INT (=0)
+    // 13.[30001] PLL_START=1
+    // .. configure ASP
+    // 26.[F0000] Wait for PLL_READY_INT=1
+    // .. configure DSD & HP
+    // .. enable ASP, DSD, DoP interrupts
+    // 42.[F0000] Wait for PLL_READY_INT=1
+    // 43.[10006] Set MCLK source to 22.5792/PLL = 0x05
+    // 45.[1000D] Enable ASP clocks
+    // .. power up HP
+
     // Initialization sequence: Power to I2S PCM playback
     // 1. Apply power, assert RESET
     // 2. Wait 1.5ms
