@@ -3,13 +3,66 @@ device Dac {
     default-byte-order: LE,
     default-access: RW,
 
-    // dummy regs
-    register status {
-        address: 0x000001,
-        fields: fieldset _ {
-            size-bytes: 1,
-            field ready 0 -> bool,
-            field error_code 7:1 -> uint,
+
+
+    block Interrupts {
+        address-offset: 0,
+        register Status1 {
+            address: 0xF0000,
+            fields: fieldset _ {
+                size-bytes: 1,
+                field PLL_DONE 0,
+                field PLL_ERROR 1,
+                field PLL_READY 2,
+
+                field XTAL_ERROR 3,
+                field XTAL_READY 4,
+                field HP_DETECT_UNPLUG 5,
+                field HP_DETECT_PLUG 6,
+                field DAC_OVFL 7,
+            },
+        },
+        register Status2 {
+            address: 0xF0001,
+            fields: fieldset _ {
+                size-bytes: 1,
+                field ASP_NOLRCK 3,
+                field ASP_EARLY 4,
+                field ASP_LATE 5,
+                field ASP_ERROR 6,
+                field ASP_OVFL 7,
+            },
         },
     },
+
+    block InterruptMasks {
+        // Mask = 1 means interrupt is disabled
+        address-offset: 0,
+        register Mask1 {
+            address: 0xF0010,
+            fields: fieldset _ {
+                size-bytes: 1,
+                field PLL_DONE 0,
+                field PLL_ERROR 1,
+                field PLL_READY 2,
+
+                field XTAL_ERROR 3,
+                field XTAL_READY 4,
+                field HP_DETECT_UNPLUG 5,
+                field HP_DETECT_PLUG 6,
+                field DAC_OVFL 7,
+            },
+        },
+        register Mask2 {
+            address: 0xF0011,
+            fields: fieldset _ {
+                size-bytes: 1,
+                field ASP_NOLRCK 3,
+                field ASP_EARLY 4,
+                field ASP_LATE 5,
+                field ASP_ERROR 6,
+                field ASP_OVFL 7,
+            },
+        },
+    }
 }
