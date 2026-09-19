@@ -3,12 +3,38 @@ device Dac {
     default-byte-order: LE,
     default-access: RW,
 
+    block Global {
+        address-offset: 0,
+        register DeviceID {
+            address: 0x10000,
+            access: RO,
+            fields: fieldset _ {
+                // askip ca auto-incremente, on verra bien
+                size-bytes: 3,
+                field dev_id 23:0,
+            },
+        },
 
+        register PowerDownControl {
+            address: 0x20000,
+            fields: fieldset _ {
+                size-bytes: 1,
+                field PDN_CLKOUT 1,
+                field PDN_PLL 2,
+                field PDN_XTAL 3,
+                field PDN_HP 4,
+                field PDN_DSDIF 5,
+                field PDN_ASP 6,
+                field PDN_XSP 7,
+            },
+        },
+    },
 
     block Interrupts {
         address-offset: 0,
         register Status1 {
             address: 0xF0000,
+            access: RO,
             fields: fieldset _ {
                 size-bytes: 1,
                 field PLL_DONE 0,
@@ -24,6 +50,7 @@ device Dac {
         },
         register Status2 {
             address: 0xF0001,
+            access: RO,
             fields: fieldset _ {
                 size-bytes: 1,
                 field ASP_NOLRCK 3,

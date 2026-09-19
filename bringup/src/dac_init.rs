@@ -1,6 +1,3 @@
-use crate::I2CResources;
-
-pub async fn test_dac_init(_rd: I2CResources) {
     // I2C details:
     // - 100/400kHz speed
     // - I2C address: 0b01100xxy
@@ -143,4 +140,106 @@ pub async fn test_dac_init(_rd: I2CResources) {
     // 2. [20000] Power down amplifier PDN_HP = 1
     // 3. [F0000] Wait for PDN_DONE_INT
     // 4. [20000] Power down ASP PDN_ASP = 1
+
+use crate::I2CResources;
+use embedded_hal_1::digital::{OutputPin, InputPin};
+use embedded_hal_async::{delay::DelayNs, i2c::I2c, i2c::Operation};
+
+type I2CAddress = u8;
+
+pub struct DACInterface<I2C, R, I, D>
+where
+    I2C: I2c,
+    R: OutputPin,
+    I: InputPin,
+    D: DelayNs,
+{
+    i2c: I2C,
+    // 7-bit unshifted address
+    // TODO: change to an enum for the ADDR pin
+    i2c_address: I2CAddress,
+    reset_pin: R,
+    interrupt_pin: I,
+    delay: D,
+}
+
+use device_driver::{RegisterInterfaceBase, AsyncRegisterInterface};
+
+#[derive(Debug)]
+pub enum InterfaceError {
+    ResetPinError,
+    InterruptPinError,
+    CommunicationError,
+}
+
+impl<I2C: I2c, R: OutputPin, I: InputPin, D: DelayNs> RegisterInterfaceBase
+    for DACInterface<I2C, R, I, D>
+{
+    type Error = InterfaceError;
+    type AddressType = u32;
+}
+
+impl<I2C: I2c, R: OutputPin, I: InputPin, D: DelayNs> AsyncRegisterInterface
+    for DACInterface<I2C, R, I, D>
+{
+    async fn write_register(
+        &mut self,
+        address: Self::AddressType,
+        data: &mut [u8],
+        _metadata: &device_driver::FieldsetMetadata,
+    ) -> Result<(), Self::Error> {
+
+        // Example: assert the reset pin.
+        // TODO: remove
+        {
+            self.reset_pin
+                .set_low()
+                .map_err(|_| Self::Error::ResetPinError)?;
+
+            self.delay.delay_us(1).await;
+
+            self.reset_pin
+                .set_low()
+                .map_err(|_| Self::Error::ResetPinError)?;
+        }
+
+        // Make the transaction
+        {
+            let mut reg_addr = [0u8; 3]; // Register addresses are 24 bits
+            reg_addr.copy_from_slice(&address.to_be_bytes()[1..4]);
+
+            let control_byte = [0x01u8]; // Enable register address auto-increment
+
+            // Write register, control and data without STOP in the middle
+            self.i2c.transaction(self.i2c_address, &mut [
+                Operation::Write(&reg_addr),
+                Operation::Write(&control_byte),
+                Operation::Write(data),
+            ]).await.map_err(|_| Self::Error::CommunicationError)?;
+        }
+
+        // Example: read the ISR pin
+        {
+            if self.interrupt_pin.is_low().map_err(|_| Self::Error::InterruptPinError)? {
+                // do something
+            }
+        }
+
+        Ok(())
+    }
+
+    async fn read_register(
+        &mut self,
+        _address: Self::AddressType,
+        _data: &mut [u8],
+        _metadata: &device_driver::FieldsetMetadata,
+    ) -> Result<(), Self::Error> {
+        // TODO
+        Ok(())
+    }
+}
+
+pub async fn test_dac_init(_rd: I2CResources) {
+    device_driver::compile!(manifest: "cs43131.ddsl");
+
 }

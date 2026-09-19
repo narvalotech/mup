@@ -25,8 +25,6 @@ use crate::dac::test_dac;
 #[allow(unused_imports)]
 use crate::dac_init::test_dac_init;
 
-device_driver::compile!(manifest: "cs43131.ddsl");
-
 #[unsafe(link_section = ".start_block")]
 #[used]
 pub static IMAGE_DEF: embassy_rp::block::ImageDef = embassy_rp::block::ImageDef::secure_exe();
