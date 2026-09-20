@@ -30,6 +30,8 @@ assign_resources! {
         i2c: I2C1,              // I2C1 on prod
         sda: PIN_6,             // 18 on prod
         scl: PIN_7,             // 19 on prod
+        reset: PIN_19,
+        interrupt: PIN_20,
     },
 
     dac: DacResources {

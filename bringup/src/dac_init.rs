@@ -158,9 +158,9 @@ where
     // 7-bit unshifted address
     // TODO: change to an enum for the ADDR pin
     i2c_address: I2CAddress,
-    _reset_pin: R,
-    _interrupt_pin: I,
-    _delay: D,
+    reset_pin: R,
+    interrupt_pin: I,
+    delay: D,
 }
 
 use device_driver::{RegisterInterfaceBase, AsyncRegisterInterface};
@@ -187,7 +187,7 @@ impl<I2C: I2c, R: OutputPin, I: InputPin, D: DelayNs> AsyncRegisterInterface
         address: Self::AddressType,
         data: &mut [u8],
         _metadata: &device_driver::FieldsetMetadata,
-    ) -> Result<(), Self::Error> {
+    ) -> Result<(), InterfaceError> {
 
         let mut reg_addr = [0u8; 3]; // Register addresses are 24 bits
         reg_addr.copy_from_slice(&address.to_be_bytes()[1..4]);
@@ -199,23 +199,103 @@ impl<I2C: I2c, R: OutputPin, I: InputPin, D: DelayNs> AsyncRegisterInterface
             Operation::Write(&reg_addr),
             Operation::Write(&control_byte),
             Operation::Write(data),
-        ]).await.map_err(|_| Self::Error::CommunicationError)?;
+        ]).await.map_err(|_| InterfaceError::CommunicationError)?;
 
         Ok(())
     }
 
     async fn read_register(
         &mut self,
-        _address: Self::AddressType,
-        _data: &mut [u8],
+        address: Self::AddressType,
+        data: &mut [u8],
         _metadata: &device_driver::FieldsetMetadata,
-    ) -> Result<(), Self::Error> {
-        // TODO
+    ) -> Result<(), InterfaceError> {
+        let mut reg_addr = [0u8; 3]; // Register addresses are 24 bits
+        reg_addr.copy_from_slice(&address.to_be_bytes()[1..4]);
+
+        let control_byte = [0x01u8]; // Enable register address auto-increment
+
+        // Write register address & control byte.
+        self.i2c.transaction(self.i2c_address, &mut [
+            Operation::Write(&reg_addr),
+            Operation::Write(&control_byte),
+        ]).await.map_err(|_| InterfaceError::CommunicationError)?;
+
+        // Datasheet says STOP expected between read & write, so we start
+        // another transaction.
+
+        // Read the register value. Mostly a single u8. Multiple registers can
+        // be combined as a single "logical register" spanning multiple bytes.
+        // In that case, the buffer will be n bytes and the auto-increment
+        // (control byte) makes sure we read the next registers.
+        self.i2c.transaction(self.i2c_address, &mut [
+            Operation::Read(data),
+        ]).await.map_err(|_| InterfaceError::CommunicationError)?;
+
         Ok(())
     }
 }
 
-pub async fn test_dac_init(_rd: I2CResources) {
-    device_driver::compile!(manifest: "cs43131.ddsl");
+impl<I2C: I2c, R: OutputPin, I: InputPin, D: DelayNs>
+    DACInterface<I2C, R, I, D>
+{
+    pub const fn new(i2c: I2C, reset_pin: R, interrupt_pin: I, delay: D) -> Self {
+        Self {
+            i2c,
+            i2c_address: 0b0110000, // TODO: make configurable
+            reset_pin,
+            interrupt_pin,
+            delay,
+        }
+    }
 
+    pub async fn reset(&mut self) -> Result<(), InterfaceError> {
+        // Reset the chip
+        {
+            self.reset_pin
+                .set_low()
+                .map_err(|_| InterfaceError::ResetPinError)?;
+
+            self.delay.delay_us(200).await;
+
+            self.reset_pin
+                .set_high()
+                .map_err(|_| InterfaceError::ResetPinError)?;
+
+            self.delay.delay_ms(2).await;
+        }
+
+        // Do a read of the interrupt pin
+        if self.interrupt_pin.is_low().map_err(|_| InterfaceError::InterruptPinError)? {
+            // do something, maybe
+        }
+
+        // TODO: reset commands
+        Ok(())
+    }
+}
+
+use embassy_rp::bind_interrupts;
+use embassy_rp::i2c::{Config, InterruptHandler};
+use embassy_rp::{peripherals::I2C1};
+use embassy_rp::gpio::{Level, Pull, Input, Output};
+
+bind_interrupts!(struct Irqs {
+    I2C1_IRQ => InterruptHandler<I2C1>;
+});
+
+device_driver::compile!(manifest: "cs43131.ddsl");
+
+pub async fn test_dac_init(rd: I2CResources) {
+    let i2c = embassy_rp::i2c::I2c::new_async(rd.i2c, rd.scl, rd.sda, Irqs, Config::default());
+
+    let interface = DACInterface::new(
+        i2c,
+        Output::new(rd.reset, Level::Low),
+        Input::new(rd.interrupt, Pull::Up),
+        embassy_time::Delay,
+    );
+
+    let mut dac = Cs43131::new(interface);
+    dac.interface.reset().await.unwrap();
 }

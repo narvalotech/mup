@@ -1,4 +1,4 @@
-device Dac {
+device Cs43131 {
     register-address-type: u32,
     default-byte-order: LE,
     default-access: RW,
