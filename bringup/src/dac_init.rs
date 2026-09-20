@@ -158,9 +158,9 @@ where
     // 7-bit unshifted address
     // TODO: change to an enum for the ADDR pin
     i2c_address: I2CAddress,
-    reset_pin: R,
-    interrupt_pin: I,
-    delay: D,
+    _reset_pin: R,
+    _interrupt_pin: I,
+    _delay: D,
 }
 
 use device_driver::{RegisterInterfaceBase, AsyncRegisterInterface};
@@ -189,41 +189,17 @@ impl<I2C: I2c, R: OutputPin, I: InputPin, D: DelayNs> AsyncRegisterInterface
         _metadata: &device_driver::FieldsetMetadata,
     ) -> Result<(), Self::Error> {
 
-        // Example: assert the reset pin.
-        // TODO: remove
-        {
-            self.reset_pin
-                .set_low()
-                .map_err(|_| Self::Error::ResetPinError)?;
+        let mut reg_addr = [0u8; 3]; // Register addresses are 24 bits
+        reg_addr.copy_from_slice(&address.to_be_bytes()[1..4]);
 
-            self.delay.delay_us(1).await;
+        let control_byte = [0x01u8]; // Enable register address auto-increment
 
-            self.reset_pin
-                .set_low()
-                .map_err(|_| Self::Error::ResetPinError)?;
-        }
-
-        // Make the transaction
-        {
-            let mut reg_addr = [0u8; 3]; // Register addresses are 24 bits
-            reg_addr.copy_from_slice(&address.to_be_bytes()[1..4]);
-
-            let control_byte = [0x01u8]; // Enable register address auto-increment
-
-            // Write register, control and data without STOP in the middle
-            self.i2c.transaction(self.i2c_address, &mut [
-                Operation::Write(&reg_addr),
-                Operation::Write(&control_byte),
-                Operation::Write(data),
-            ]).await.map_err(|_| Self::Error::CommunicationError)?;
-        }
-
-        // Example: read the ISR pin
-        {
-            if self.interrupt_pin.is_low().map_err(|_| Self::Error::InterruptPinError)? {
-                // do something
-            }
-        }
+        // Write register, control and data without STOP in the middle
+        self.i2c.transaction(self.i2c_address, &mut [
+            Operation::Write(&reg_addr),
+            Operation::Write(&control_byte),
+            Operation::Write(data),
+        ]).await.map_err(|_| Self::Error::CommunicationError)?;
 
         Ok(())
     }
