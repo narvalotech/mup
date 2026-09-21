@@ -318,12 +318,6 @@ pub async fn test_dac_init(rd: I2CResources) {
                     .await
                     .unwrap();
 
-        {
-            let snr = dac.global().device_id()
-                .read_async().await.unwrap().dev_id();
-            info!("read data: {=u32:x}", snr);
-        }
-
         embassy_time::Delay.delay_ms(1000).await;
     }
 }

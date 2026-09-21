@@ -3,20 +3,109 @@ device Cs43131 {
     default-byte-order: LE,
     default-access: RW,
 
+    block Undocumented {
+        // These registers are not documented, but they have to be written to
+        // for power sequencing. Only specific raw values are documented in the
+        // datasheet.
+        address-offset: 0,
+        register Undocumented80032 {
+            address: 0x80032,
+            fields: fieldset _ {
+                size-bytes: 1,
+                field DATA 7:0,
+            },
+        },
+        register Undocumented10010 {
+            address: 0x10010,
+            fields: fieldset _ {
+                size-bytes: 1,
+                field DATA 7:0,
+            },
+        },
+    },
+
     block Global {
         address-offset: 0,
         register DeviceID {
             address: 0x10000,
             access: RO,
             fields: fieldset _ {
-                // askip ca auto-incremente, on verra bien
                 size-bytes: 3,
                 field dev_id 23:0,
             },
         },
 
+        register SystemClockingControl {
+            address: 0x10006,
+            reset: 0b110,
+            fields: fieldset _ {
+                size-bytes: 1,
+                field MCLK_INT 2,
+                field MCLK_SRC_SEL 1:0 -> _ as
+                enum _ {
+                    DirectMode: 0,
+                    PllMode: 1,
+                    RcoMode: 2, // default
+                    Reserved: 3,
+                },
+            },
+        },
+
+        register SerialPortSampleRate {
+            address: 0x1000B,
+            reset: 0b1,
+            fields: fieldset _ {
+                size-bytes: 1,
+                field ASP_SPRATE 3:0 -> _ as
+                enum AspRateKhz {
+                    Rate32: 0,
+                    Rate44_1: 1,
+                    Rate48: 2,
+                    Rate88_2: 3,
+                    Rate96: 4,
+                    Rate176_4: 5,
+                    Rate192: 6,
+                    Rate352_8: 7,
+                    Rate384: 8,
+                    Reserved: catch-all _,
+                },
+            },
+        },
+
+        register SerialPortSampleBitSize {
+            address: 0x1000C,
+            reset: 0b101,
+            fields: fieldset _ {
+                size-bytes: 1,
+                field ASP_SPSIZE 1:0 -> _ as
+                enum AspBitSize {
+                    BS32: 0,
+                    BS24: 1,
+                    BS16: 2,
+                    BS8: 3,
+                },
+                field XSP_SPSIZE 3:2 -> _ as
+                enum XspBitSize {
+                    BS32: 0,
+                    BS24: 1,
+                    Reserved: catch-all _,
+                },
+            },
+        },
+
+        register PadInterfaceConfiguration {
+            address: 0x1000D,
+            reset: 0b11,
+            fields: fieldset _ {
+                size-bytes: 1,
+                field ASP_3ST 0,
+                field XSP_3ST 1,
+            },
+        },
+
         register PowerDownControl {
             address: 0x20000,
+            reset: 0b11111110,
             fields: fieldset _ {
                 size-bytes: 1,
                 field PDN_CLKOUT 1,
@@ -26,6 +115,342 @@ device Cs43131 {
                 field PDN_DSDIF 5,
                 field PDN_ASP 6,
                 field PDN_XSP 7,
+            },
+        },
+    },
+
+    block PLL {
+        address-offset: 0,
+        register PllSetting1 {
+            address: 0x30001,
+            fields: fieldset _ {
+                size-bytes: 1,
+                field PLL_START 0,
+            },
+        },
+        register PllSetting2 {
+            address: 0x30002,
+            fields: fieldset _ {
+                size-bytes: 1,
+                field PLL_DIV_FRAC_0 7:0,
+            },
+        },
+        register PllSetting3 {
+            address: 0x30003,
+            fields: fieldset _ {
+                size-bytes: 1,
+                field PLL_DIV_FRAC_1 7:0,
+            },
+        },
+        register PllSetting4 {
+            address: 0x30004,
+            fields: fieldset _ {
+                size-bytes: 1,
+                field PLL_DIV_FRAC_2 7:0,
+            },
+        },
+        register PllSetting5 {
+            address: 0x30005,
+            reset: 0b1000000,
+            fields: fieldset _ {
+                size-bytes: 1,
+                field PLL_DIV_INT 7:0,
+            },
+        },
+        register PllSetting6 {
+            address: 0x30008,
+            reset: 0b10000,
+            fields: fieldset _ {
+                size-bytes: 1,
+                field PLL_OUT_DIV 7:0,
+            },
+        },
+        register PllSetting7 {
+            address: 0x3000A,
+            reset: 0b10000000,
+            fields: fieldset _ {
+                size-bytes: 1,
+                field PLL_CAL_RATIO 7:0,
+            },
+        },
+        register PllSetting8 {
+            address: 0x3001B,
+            reset: 0b10011,
+            fields: fieldset _ {
+                size-bytes: 1,
+                // 500/512 factor or 1
+                field PLL_MODE_BYPASS 1,
+            },
+        },
+    },
+
+    block ASP {
+        address-offset: 0,
+        register PllSetting9 {
+            address: 0x40002,
+            reset: 0b10,
+            fields: fieldset _ {
+                size-bytes: 1,
+                field PLL_REF_PREDIV 1:0 -> _ as
+                enum _ {
+                    Div1: 0,
+                    Div2: 1,
+                    Div4: 2,    // default
+                    Div8: 3,
+                },
+            },
+        },
+        register AspNumerator {
+            address: 0x40010,
+            reset: 0b1,
+            fields: fieldset _ {
+                size-bytes: 2,
+                byte-order: LE,
+                field ASP_N 15:0,
+            },
+        },
+        register AspDenominator {
+            address: 0x40012,
+            reset: 0b1000,
+            fields: fieldset _ {
+                size-bytes: 2,
+                byte-order: LE,
+                field ASP_M 15:0,
+            },
+        },
+        register AspLrckHighTime {
+            address: 0x40014,
+            reset: 0b11111,
+            fields: fieldset _ {
+                size-bytes: 2,
+                byte-order: LE,
+                field ASP_LCHI 15:0,
+            },
+        },
+        register AspLrckPeriod {
+            address: 0x40016,
+            reset: 0b111111,
+            fields: fieldset _ {
+                size-bytes: 2,
+                byte-order: LE,
+                field ASP_LCPR 15:0,
+            },
+        },
+        register AspClockConfiguration {
+            address: 0x40018,
+            reset: 0b1100,
+            fields: fieldset _ {
+                size-bytes: 1,
+                // 1 is inverted. 0 is normal.
+                field ASP_LCPOL_IN 0,
+                field ASP_LCPOL_OUT 1,
+                field ASP_SCPOL_IN 2,
+                field ASP_SCPOL_OUT 3,
+                field ASP_M_SB 4, // default: slave mode
+            },
+        },
+        register AspFrameConfiguration {
+            address: 0x40019,
+            reset: 0b1010,
+            fields: fieldset _ {
+                size-bytes: 1,
+
+                /// unit of ASP_SCLK periods
+                field ASP_FSD 2:0, // default 0b10 -> 1.0 delay
+                /// 0: programmable duty cycle
+                field ASP_5050 3, // default 0 -> fixed 50%
+                /// ASP start phase (ie clock edge)
+                field ASP_STP 4,  // default 0 -> high to low
+            },
+        },
+        register AspChannel1Location {
+            address: 0x50000,
+            fields: fieldset _ {
+                size-bytes: 1,
+                field ASP_RX_CH1 7:0,
+            },
+        },
+        register AspChannel2Location {
+            address: 0x50001,
+            fields: fieldset _ {
+                size-bytes: 1,
+                field ASP_RX_CH2 7:0,
+            },
+        },
+        register AspChannel1SizeEnable {
+            address: 0x5000A,
+            reset: 0b110,
+            fields: fieldset _ {
+                size-bytes: 1,
+                field ASP_RX_CH1_RES 1:0 -> _ as
+                enum _ {
+                    BS8: 0,
+                    BS16: 1,
+                    BS24: 2,    // default
+                    BS32: 3,
+                },
+                /// enable
+                field ASP_RX_CH1_EN 2,
+                /// active phase
+                field ASP_RX_CH1_AP 3, // valid only in 5050 mode
+            },
+        },
+        register AspChannel2SizeEnable {
+            address: 0x5000B,
+            reset: 0b1110,
+            fields: fieldset _ {
+                size-bytes: 1,
+                field ASP_RX_CH2_RES 1:0 -> _ as
+                enum _ {
+                    BS8: 0,
+                    BS16: 1,
+                    BS24: 2,    // default
+                    BS32: 3,
+                },
+                /// enable
+                field ASP_RX_CH1_EN 2,
+                /// active phase
+                field ASP_RX_CH1_AP 3, // valid only in 5050 mode
+            },
+        },
+    },
+
+    block HeadphonePcm {
+        address-offset: 0,
+        register HpOutputControl1 {
+            address: 0x80000,
+            reset: 0b110000,
+            fields: fieldset _ {
+                size-bytes: 1,
+                /// output full-scale voltage is 2V
+                field PLUS_1DB_EN 0,
+                field HP_IN_LP 2, // low-power mode
+                field HP_IN_EN 3,
+                field OUT_FS 5:4 -> _ as
+                enum _ {
+                    FS_0_5V: 0,
+                    FS_1V: 1,
+                    FS_1_41V: 2,
+                    FS_1_73V: 3, // default
+                },
+                field HP_CLAMPB 6,
+                field HP_CLAMPA 7,
+            },
+        },
+        register PcmFilterOption {
+            address: 0x90000,
+            reset: 0b10,
+            fields: fieldset _ {
+                size-bytes: 1,
+                field DEEMP_ON 0,
+                field HIGH_PASS 1,
+                field PCM_WBF_EN 2,
+                field NOS 3,
+                field PHCOMP_LOWLATB 4,
+                field FILTER_SLOW_FASTB 5,
+            },
+        },
+        register PcmVolumeB {
+            address: 0x90001,
+            reset: 0b1111000,
+            fields: fieldset _ {
+                size-bytes: 1,
+                /// .5 dB increments from 0 to -127.5dB
+                /// digital mute is 0xFF
+                field PCM_VOLUME_B 7:0,
+            },
+        },
+        register PcmVolumeA {
+            address: 0x90002,
+            reset: 0b1111000,
+            fields: fieldset _ {
+                size-bytes: 1,
+                /// .5 dB increments from 0 to -127.5dB
+                /// digital mute is 0xFF
+                field PCM_VOLUME_A 7:0,
+            },
+        },
+        register PcmPathSignalControl1 {
+            address: 0x90003,
+            reset: 0b10101000,
+            fields: fieldset _ {
+                size-bytes: 1,
+                field PCM_MUTE_B 0,
+                field PCM_MUTE_A 1,
+                field PCM_AMUTEBEQA 2,
+                field PCM_AMUTE 3, // default 1
+                field PCM_SZC 5:4 -> _ as
+                enum _ {
+                    ImmediateChange: 0,
+                    ZeroCrossChange: 1,
+                    SoftRamp: 2, // default
+                    SoftRampZeroCross: 3,
+                },
+                field PCM_VOL_BEQA 6,
+                field PCM_RAMP_DOWN 7,
+            },
+        },
+        register PcmPathSignalControl2 {
+            address: 0x90004,
+            fields: fieldset _ {
+                size-bytes: 1,
+                field PCM_COPY_CHAN 0,
+                field PCM_SWAP_CHAN 1,
+                field PCM_INV_B 2,
+                field PCM_INV_A 3,
+            },
+        },
+        register ClassHControl {
+            address: 0xB0000,
+            reset: 0b11110,
+            fields: fieldset _ {
+                size-bytes: 1,
+                field EXT_VCPFILT 0,
+                field HV_EN 1,
+                field ADPT_PWR 4:2 -> _ as
+                enum _ {
+                    FixedMode0: 1, // VP_LDO
+                    FixedMode1: 2, // VCP
+                    AdaptToSignal: 3, // default
+                    Reserved: catch-all _,
+                },
+            },
+        },
+        register HpDetect {
+            address: 0xD0000,
+            reset: 0b100,
+            fields: fieldset _ {
+                size-bytes: 1,
+                field HPDETECT_FALL_DBC_TIME 2:1 -> _ as
+                enum _ {
+                    Fall0ms: 0,
+                    Fall250ms: 1,
+                    Fall500ms: 2,
+                    Fall1000ms: 3,
+                },
+                field HPDETECT_RISE_DBC_TIME 4:3 -> _ as
+                enum _ {
+                    Rise0ms: 0,
+                    Rise250ms: 1,
+                    Rise500ms: 2,
+                    Rise1000ms: 3,
+                },
+                field HPDETECT_INV 5,
+                field HPDETECT_CTRL 7:6 -> _ as
+                enum _ {
+                    Disabled: 0, // default
+                    Reserved: catch-all _,
+                    Enabled: 3,
+                },
+            },
+        },
+        register HpStatus {
+            address: 0xD0001,
+            access: RO,
+            fields: fieldset _ {
+                size-bytes: 1,
+                field HPDETECT_UNPLUG_DNC 5,
+                field HPDETECT_PLUG_DBC 6,
             },
         },
     },
@@ -67,6 +492,7 @@ device Cs43131 {
         address-offset: 0,
         register Mask1 {
             address: 0xF0010,
+            reset: 0xFF,
             fields: fieldset _ {
                 size-bytes: 1,
                 field PLL_DONE 0,
@@ -82,6 +508,7 @@ device Cs43131 {
         },
         register Mask2 {
             address: 0xF0011,
+            reset: 0b11111000,
             fields: fieldset _ {
                 size-bytes: 1,
                 field ASP_NOLRCK 3,
