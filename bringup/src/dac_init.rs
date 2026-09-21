@@ -279,6 +279,8 @@ use embassy_rp::bind_interrupts;
 use embassy_rp::i2c::{Config, InterruptHandler};
 use embassy_rp::{peripherals::I2C1};
 use embassy_rp::gpio::{Level, Pull, Input, Output};
+use defmt::*;
+use defmt_rtt as _;
 
 bind_interrupts!(struct Irqs {
     I2C1_IRQ => InterruptHandler<I2C1>;
@@ -297,5 +299,31 @@ pub async fn test_dac_init(rd: I2CResources) {
     );
 
     let mut dac = Cs43131::new(interface);
+    info!("reset");
     dac.interface.reset().await.unwrap();
+
+    loop {
+        info!("init");
+        // Initialization sequence
+        dac.global().power_down_control()
+                    .write_async(|w| {
+                        w.set_pdn_clkout(true);
+                        w.set_pdn_pll(false);
+                        w.set_pdn_xtal(true);
+                        w.set_pdn_hp(true);
+                        w.set_pdn_dsdif(true);
+                        w.set_pdn_asp(true);
+                        w.set_pdn_xsp(true);
+                    })
+                    .await
+                    .unwrap();
+
+        {
+            let snr = dac.global().device_id()
+                .read_async().await.unwrap().dev_id();
+            info!("read data: {=u32:x}", snr);
+        }
+
+        embassy_time::Delay.delay_ms(1000).await;
+    }
 }

@@ -37,9 +37,9 @@ async fn main(_spawner: Spawner) {
     info!("Hello!");
     Timer::after_millis(100).await;
 
-    test_sd(r.sd).await;
-    test_display(r.disp).await;
-    test_dac(r.dac).await;
+    // test_sd(r.sd).await;
+    // test_display(r.disp).await;
+    // test_dac(r.dac).await;
     test_dac_init(r.i2c).await;
 
     loop {
