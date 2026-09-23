@@ -128,25 +128,12 @@ device Cs43131 {
                 field PLL_START 0,
             },
         },
-        register PllSetting2 {
+        register PllSetting234 {
             address: 0x30002,
             fields: fieldset _ {
-                size-bytes: 1,
-                field PLL_DIV_FRAC_0 7:0,
-            },
-        },
-        register PllSetting3 {
-            address: 0x30003,
-            fields: fieldset _ {
-                size-bytes: 1,
-                field PLL_DIV_FRAC_1 7:0,
-            },
-        },
-        register PllSetting4 {
-            address: 0x30004,
-            fields: fieldset _ {
-                size-bytes: 1,
-                field PLL_DIV_FRAC_2 7:0,
+                size-bytes: 3,
+                byte-order: LE,
+                field PLL_DIV_FRAC 23:0,
             },
         },
         register PllSetting5 {
@@ -485,11 +472,8 @@ device Cs43131 {
                 field ASP_OVFL 7,
             },
         },
-    },
 
-    block InterruptMasks {
         // Mask = 1 means interrupt is disabled
-        address-offset: 0,
         register Mask1 {
             address: 0xF0010,
             reset: 0xFF,
@@ -518,5 +502,5 @@ device Cs43131 {
                 field ASP_OVFL 7,
             },
         },
-    }
+    },
 }

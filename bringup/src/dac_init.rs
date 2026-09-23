@@ -302,9 +302,10 @@ pub async fn test_dac_init(rd: I2CResources) {
     info!("reset");
     dac.interface.reset().await.unwrap();
 
-    loop {
+    {
         info!("init");
-        // Initialization sequence
+        embassy_time::Delay.delay_ms(2).await;
+
         dac.global().power_down_control()
                     .write_async(|w| {
                         w.set_pdn_clkout(true);
@@ -319,5 +320,48 @@ pub async fn test_dac_init(rd: I2CResources) {
                     .unwrap();
 
         embassy_time::Delay.delay_ms(1000).await;
+
+        dac.asp().pll_setting_9().write_async(|w| {
+            w.set_pll_ref_prediv(PllRefPrediv::Div1)
+        }).await.unwrap();
+
+        dac.pll().pll_setting_6().write_async(|w| {
+            w.set_pll_out_div(0x0A)
+        }).await.unwrap();
+
+        dac.pll().pll_setting_234().write_async(|w| {
+            w.set_pll_div_frac(0x80_0000)
+        }).await.unwrap();
+
+        dac.pll().pll_setting_5().write_async(|w| {
+            w.set_pll_div_int(0x49)
+        }).await.unwrap();
+
+        dac.pll().pll_setting_8().write_async(|w| {
+            w.set_pll_mode_bypass(false)
+        }).await.unwrap();
+
+        // clear any old interrupts
+        let _ = dac.interrupts().status_1().read_async().await.unwrap();
+        let _ = dac.interrupts().status_2().read_async().await.unwrap();
+
+        dac.pll().pll_setting_7().write_async(|w| {
+            w.set_pll_cal_ratio(120)
+        }).await.unwrap();
+
+        dac.interrupts().mask_1().write_async(|w| {
+            w.set_pll_ready(true);
+            w.set_pll_error(true);
+        }).await.unwrap();
+
+        dac.pll().pll_setting_1().write_async(|w| {
+            w.set_pll_start(true);
+        }).await.unwrap();
+
+        dac.global().serial_port_sample_rate().write_async(|w| {
+            w.set_asp_sprate(AspRateKhz::Rate441);
+        }).await.unwrap();
+
+        // continue from step 10.
     }
 }
