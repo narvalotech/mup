@@ -270,7 +270,6 @@ impl<I2C: I2c, R: OutputPin, I: InputPin, D: DelayNs>
             // do something, maybe
         }
 
-        // TODO: reset commands
         Ok(())
     }
 }
@@ -299,11 +298,18 @@ pub async fn test_dac_init(rd: I2CResources) {
     );
 
     let mut dac = Cs43131::new(interface);
-    info!("reset");
+    info!("toggle reset");
     dac.interface.reset().await.unwrap();
 
     {
-        info!("init");
+        info!("reading serial number");
+        let snr = dac.global().device_id()
+                              .read_async().await.unwrap().dev_id();
+        info!("serial number: {=u32:x}", snr);
+    }
+
+    {
+        info!("start init sequence");
         embassy_time::Delay.delay_ms(2).await;
 
         dac.global().power_down_control()
@@ -459,5 +465,79 @@ pub async fn test_dac_init(rd: I2CResources) {
             w.set_hp_in_lp(false);
             w.set_hp_in_en(false);
         }).await.unwrap();
+
+        dac.headphone_pcm().hp_detect().write_async(|w| {
+            w.set_hpdetect_fall_dbc_time(HpdetectFallDbcTime::Fall0Ms);
+            w.set_hpdetect_rise_dbc_time(HpdetectRiseDbcTime::Rise250Ms);
+            w.set_hpdetect_inv(false);
+        }).await.unwrap();
+        dac.headphone_pcm().hp_detect().write_async(|w| {
+            // This write should output 0xC4
+            w.set_hpdetect_ctrl(HpdetectCtrl::Enabled);
+        }).await.unwrap();
+
+        // clear any old interrupts
+        let _ = dac.interrupts().status_1().read_async().await.unwrap();
+        let _ = dac.interrupts().status_2().read_async().await.unwrap();
+        dac.interrupts().mask_1().write_async(|w| {
+            w.set_pll_done(false);
+            w.set_pll_ready(false);
+            w.set_pll_error(false);
+            w.set_dac_ovfl(false);
+
+            w.set_xtal_error(true);
+            w.set_xtal_ready(true);
+            w.set_hp_detect_plug(true);
+            w.set_hp_detect_unplug(true);
+        }).await.unwrap();
+        dac.interrupts().mask_2().write_async(|w| {
+            w.set_asp_nolrck(false);
+            w.set_asp_early(false);
+            w.set_asp_late(false);
+            w.set_asp_error(false);
+            w.set_asp_ovfl(false);
+        }).await.unwrap();
+
+        embassy_time::Delay.delay_ms(2).await;
+        let _ = dac.interrupts().status_1().read_async().await.unwrap();
+        // FIXME: loop here waiting for PLL_READY
+
+        dac.global().system_clocking_control().write_async(|w| {
+            w.set_mclk_int(false);
+            w.set_mclk_src_sel(MclkSrcSel::PllMode);
+        }).await.unwrap();
+
+        embassy_time::Delay.delay_ms(2).await;
+
+        // // Don't need to do this as we're in slave mode
+        // dac.global().pad_interface_configuration().write_async(|w| {
+        //     w.asp_3st(false);
+        // }).await.unwrap();
+
+        dac.undocumented().undocumented_10010().write_async(|w| {
+            w.set_data(0x99);
+        }).await.unwrap();
+        dac.undocumented().undocumented_80032().write_async(|w| {
+            w.set_data(0x20);
+        }).await.unwrap();
+
+        dac.global().power_down_control().write_async(|w| {
+            w.set_pdn_asp(false);
+        }).await.unwrap();
+        dac.global().power_down_control().write_async(|w| {
+            w.set_pdn_hp(false);
+        }).await.unwrap();
+
+        embassy_time::Delay.delay_ms(12).await;
+
+        dac.undocumented().undocumented_80032().write_async(|w| {
+            w.set_data(0x00);
+        }).await.unwrap();
+        dac.undocumented().undocumented_10010().write_async(|w| {
+            w.set_data(0x00);
+        }).await.unwrap();
+
+        // Can now start sending I2S data
+        info!("end init sequence");
     }
 }
