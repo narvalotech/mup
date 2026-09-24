@@ -362,6 +362,102 @@ pub async fn test_dac_init(rd: I2CResources) {
             w.set_asp_sprate(AspRateKhz::Rate441);
         }).await.unwrap();
 
-        // continue from step 10.
+        dac.global().serial_port_sample_bit_size().write_async(|w| {
+            w.set_asp_spsize(AspBitSize::Bs16);
+        }).await.unwrap();
+
+        dac.asp().asp_numerator().write_async(|w| {
+            w.set_asp_n(1);
+        }).await.unwrap();
+
+        dac.asp().asp_denominator().write_async(|w| {
+            w.set_asp_m(8);
+        }).await.unwrap();
+
+        dac.asp().asp_lrck_high_time().write_async(|w| {
+            // datasheet says 31 for 32-bits
+            // we configure 16-bits instead
+            w.set_asp_lchi(15);
+        }).await.unwrap();
+
+        dac.asp().asp_lrck_period().write_async(|w| {
+            // datasheet says 63 for 32-bits
+            // we configure 16-bits instead
+            w.set_asp_lcpr(31);
+        }).await.unwrap();
+
+        dac.asp().asp_clock_configuration().write_async(|w| {
+            w.set_asp_lcpol_in(false);
+            w.set_asp_lcpol_out(false);
+            w.set_asp_scpol_in(true);
+            w.set_asp_scpol_out(true);
+            w.set_asp_m_sb(false)
+        }).await.unwrap();
+
+        dac.asp().asp_frame_configuration().write_async(|w| {
+            w.set_asp_fsd(2);   // 1.0 delay
+            w.set_asp_5050(false);
+            w.set_asp_stp(false);
+        }).await.unwrap();
+
+        dac.asp().asp_channel_1_location().write_async(|w| {
+            w.set_asp_rx_ch_1(0);
+        }).await.unwrap();
+
+        dac.asp().asp_channel_2_location().write_async(|w| {
+            w.set_asp_rx_ch_2(0);
+        }).await.unwrap();
+
+        dac.asp().asp_channel_1_size_enable().write_async(|w| {
+            w.set_asp_rx_ch_1_res(AspRxCh1Res::Bs16);
+            w.set_asp_rx_ch_1_en(true);
+            w.set_asp_rx_ch_1_ap(false);
+        }).await.unwrap();
+
+        dac.asp().asp_channel_2_size_enable().write_async(|w| {
+            w.set_asp_rx_ch_2_res(AspRxCh2Res::Bs16);
+            w.set_asp_rx_ch_2_en(true);
+            w.set_asp_rx_ch_2_ap(true);
+        }).await.unwrap();
+
+        dac.headphone_pcm().pcm_filter_option().write_async(|w| {
+            w.set_high_pass(true);
+        }).await.unwrap();
+
+        dac.headphone_pcm().pcm_volume_b().write_async(|w| {
+            w.set_pcm_volume_b(0);  // 0dB
+        }).await.unwrap();
+        dac.headphone_pcm().pcm_volume_a().write_async(|w| {
+            w.set_pcm_volume_a(0);  // 0dB
+        }).await.unwrap();
+
+        dac.headphone_pcm().pcm_path_signal_control_1().write_async(|w| {
+            w.set_pcm_ramp_down(true);
+            w.set_pcm_vol_beqa(true);
+            w.set_pcm_szc(PcmSzc::SoftRamp);
+            w.set_pcm_amute(true);
+            w.set_pcm_amutebeqa(true);
+            w.set_pcm_mute_a(false);
+            w.set_pcm_mute_b(false);
+        }).await.unwrap();
+
+        dac.headphone_pcm().pcm_path_signal_control_2().write_async(|w| {
+            w.set_pcm_copy_chan(false);
+            w.set_pcm_swap_chan(false);
+            w.set_pcm_inv_b(false);
+            w.set_pcm_inv_a(false);
+        }).await.unwrap();
+
+        dac.headphone_pcm().class_h_control().write_async(|w| {
+            w.set_ext_vcpfilt(false);
+            w.set_hv_en(true);
+            w.set_adpt_pwr(AdptPwr::AdaptToSignal);
+        }).await.unwrap();
+
+        dac.headphone_pcm().hp_output_control_1().write_async(|w| {
+            w.set_plus_1_db_en(false);
+            w.set_hp_in_lp(false);
+            w.set_hp_in_en(false);
+        }).await.unwrap();
     }
 }

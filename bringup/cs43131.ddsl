@@ -295,9 +295,9 @@ device Cs43131 {
                     BS32: 3,
                 },
                 /// enable
-                field ASP_RX_CH1_EN 2,
+                field ASP_RX_CH2_EN 2,
                 /// active phase
-                field ASP_RX_CH1_AP 3, // valid only in 5050 mode
+                field ASP_RX_CH2_AP 3, // valid only in 5050 mode
             },
         },
     },
