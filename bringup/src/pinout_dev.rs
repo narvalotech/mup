@@ -26,6 +26,11 @@ use assign_resources::assign_resources;
 
 
 assign_resources! {
+    clock: ClockResources {
+        // FIXME: implement clock-out
+        out: PIN_23,
+    },
+
     i2c: I2CResources {
         i2c: I2C1,              // I2C1 on prod
         sda: PIN_6,             // 18 on prod
@@ -42,22 +47,31 @@ assign_resources! {
         din: PIN_18,
     },
 
-    sd: SdResources {
-        spi: SPI0,              // this will be moved out for prod
-        cs: PIN_5,
-        sck: PIN_2,
-        mosi: PIN_3,
-        miso: PIN_4,
-    },
+    // spi: SpiResources {
+    //     // for sd
+    //     spi: SPI0,
+    //     sck: PIN_2,
+    //     mosi: PIN_3,
+    //     miso: PIN_4,
+
+    //     cs_sd: PIN_5,
+    //     cs_disp: PIN_9,
+    // }
+
+    spi: SpiResources {
+        // for display
+        spi: SPI1,
+        sck: PIN_10,
+        mosi: PIN_11,
+        miso: PIN_24,
+
+        cs_sd: PIN_5,
+        cs_disp: PIN_9,
+    }
 
     disp: DisplayResources {
-        spi: SPI1,
         dc: PIN_13,
         res: PIN_12,
         blk: PIN_14,
-
-        cs: PIN_9,
-        sck: PIN_10,
-        mosi: PIN_11,
     }
 }

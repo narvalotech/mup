@@ -22,10 +22,11 @@ pub mod sd;
 pub mod disp;
 pub mod dac;
 pub mod dac_init;
-pub mod pinout_prod;
-// pub mod pinout_dev;
+// pub mod pinout_prod;
+pub mod pinout_dev;
 
-use crate::pinout_prod as pinout;
+// use crate::pinout_prod as pinout;
+use crate::pinout_dev as pinout;
 use pinout::{SpiResources, ClockResources, DisplayResources, I2CResources, DacResources, AssignedResources};
 
 #[allow(unused_imports)]
