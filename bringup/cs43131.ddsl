@@ -162,7 +162,8 @@ device Cs43131 {
         },
         register PllSetting8 {
             address: 0x3001B,
-            reset: 0b10011,
+            // the datasheet sequence says to init to 0 instead
+            // reset: 0b10011,
             fields: fieldset _ {
                 size-bytes: 1,
                 // 500/512 factor or 1
@@ -398,8 +399,8 @@ device Cs43131 {
                 enum _ {
                     FixedMode0: 1, // VP_LDO
                     FixedMode1: 2, // VCP
-                    AdaptToSignal: 3, // default
                     Reserved: catch-all _,
+                    AdaptToSignal: 7, // default
                 },
             },
         },

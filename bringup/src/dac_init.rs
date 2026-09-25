@@ -328,10 +328,8 @@ pub async fn test_dac_init(rd: I2CResources) -> Cs43131<DacType> {
                     .await
                     .unwrap();
 
-        embassy_time::Delay.delay_ms(1000).await;
-
         dac.asp().pll_setting_9().write_async(|w| {
-            w.set_pll_ref_prediv(PllRefPrediv::Div1)
+            w.set_pll_ref_prediv(PllRefPrediv::Div4)
         }).await.unwrap();
 
         dac.pll().pll_setting_6().write_async(|w| {
@@ -352,15 +350,14 @@ pub async fn test_dac_init(rd: I2CResources) -> Cs43131<DacType> {
 
         // clear any old interrupts
         let _ = dac.interrupts().status_1().read_async().await.unwrap();
-        let _ = dac.interrupts().status_2().read_async().await.unwrap();
 
         dac.pll().pll_setting_7().write_async(|w| {
             w.set_pll_cal_ratio(120)
         }).await.unwrap();
 
         dac.interrupts().mask_1().write_async(|w| {
-            w.set_pll_ready(true);
-            w.set_pll_error(true);
+            w.set_pll_ready(false);
+            w.set_pll_error(false);
         }).await.unwrap();
 
         dac.pll().pll_setting_1().write_async(|w| {
@@ -405,7 +402,7 @@ pub async fn test_dac_init(rd: I2CResources) -> Cs43131<DacType> {
 
         dac.asp().asp_frame_configuration().write_async(|w| {
             w.set_asp_fsd(2);   // 1.0 delay
-            w.set_asp_5050(false);
+            w.set_asp_5050(true);
             w.set_asp_stp(false);
         }).await.unwrap();
 
@@ -470,8 +467,8 @@ pub async fn test_dac_init(rd: I2CResources) -> Cs43131<DacType> {
         }).await.unwrap();
 
         dac.headphone_pcm().hp_detect().write_async(|w| {
-            w.set_hpdetect_fall_dbc_time(HpdetectFallDbcTime::Fall0Ms);
-            w.set_hpdetect_rise_dbc_time(HpdetectRiseDbcTime::Rise250Ms);
+            w.set_hpdetect_fall_dbc_time(HpdetectFallDbcTime::Fall500Ms);
+            w.set_hpdetect_rise_dbc_time(HpdetectRiseDbcTime::Rise0Ms);
             w.set_hpdetect_inv(false);
         }).await.unwrap();
         dac.headphone_pcm().hp_detect().write_async(|w| {
@@ -481,7 +478,6 @@ pub async fn test_dac_init(rd: I2CResources) -> Cs43131<DacType> {
 
         // clear any old interrupts
         let _ = dac.interrupts().status_1().read_async().await.unwrap();
-        let _ = dac.interrupts().status_2().read_async().await.unwrap();
         dac.interrupts().mask_1().write_async(|w| {
             w.set_pll_done(false);
             w.set_pll_ready(false);
@@ -502,11 +498,11 @@ pub async fn test_dac_init(rd: I2CResources) -> Cs43131<DacType> {
         }).await.unwrap();
 
         embassy_time::Delay.delay_ms(2).await;
-        let _ = dac.interrupts().status_1().read_async().await.unwrap();
         // FIXME: loop here waiting for PLL_READY
+        let _ = dac.interrupts().status_1().read_async().await.unwrap();
 
         dac.global().system_clocking_control().write_async(|w| {
-            w.set_mclk_int(false);
+            w.set_mclk_int(false); // MCLK freq: 24.576MHz
             w.set_mclk_src_sel(MclkSrcSel::PllMode);
         }).await.unwrap();
 
@@ -525,9 +521,12 @@ pub async fn test_dac_init(rd: I2CResources) -> Cs43131<DacType> {
         }).await.unwrap();
 
         dac.global().power_down_control().write_async(|w| {
+            w.set_pdn_pll(false);
             w.set_pdn_asp(false);
         }).await.unwrap();
         dac.global().power_down_control().write_async(|w| {
+            w.set_pdn_pll(false);
+            w.set_pdn_asp(false);
             w.set_pdn_hp(false);
         }).await.unwrap();
 
