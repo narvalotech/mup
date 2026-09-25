@@ -18,15 +18,10 @@ use panic_probe as _;
 // spi stuff
 use embassy_sync::blocking_mutex::raw::NoopRawMutex;
 use embassy_embedded_hal::shared_bus::blocking::spi::SpiDeviceWithConfig;
-use embassy_rp::spi::{Spi, Blocking};
-use embassy_rp::peripherals::SPI1;
 
+use crate::{SpiBus, DisplayResources};
 
-use crate::DisplayResources;
-
-// FIXME move out
-type Spi1Bus = Spi<'static, SPI1, Blocking>;
-type DisplaySpi = SpiDeviceWithConfig<'static, NoopRawMutex, Spi1Bus, Output<'static>>;
+type DisplaySpi = SpiDeviceWithConfig<'static, NoopRawMutex, SpiBus, Output<'static>>;
 
 pub async fn test_display(rd: DisplayResources, display_spi: DisplaySpi) {
     info!("Test display");

@@ -75,3 +75,11 @@ assign_resources! {
         blk: PIN_14,
     }
 }
+
+use embassy_rp::spi::{Spi, Blocking};
+
+use embassy_rp::peripherals::SPI1;
+pub type SpiBus = Spi<'static, SPI1, Blocking>;
+
+// use embassy_rp::peripherals::SPI0;
+// pub type SpiBus = Spi<'static, SPI0, Blocking>;

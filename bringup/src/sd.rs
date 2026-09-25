@@ -10,9 +10,10 @@ use panic_probe as _;
 // spi stuff
 use embassy_sync::blocking_mutex::raw::NoopRawMutex;
 use embassy_embedded_hal::shared_bus::blocking::spi::SpiDeviceWithConfig;
-use embassy_rp::spi::{Spi, Config as SpiConfig, Blocking};
+use embassy_rp::spi::{Config as SpiConfig};
 use embassy_rp::gpio::Output;
-use embassy_rp::peripherals::SPI1;
+
+use crate::SpiBus;
 
 /// embedded-sdmmc needs a time source for file timestamps. We don't have an
 /// RTC here, so just return a fixed bogus time.
@@ -31,9 +32,7 @@ impl TimeSource for DummyTimesource {
     }
 }
 
-// FIXME: move to own types crate
-type Spi1Bus = Spi<'static, SPI1, Blocking>;
-type SdSpi = SpiDeviceWithConfig<'static, NoopRawMutex, Spi1Bus, Output<'static>>;
+type SdSpi = SpiDeviceWithConfig<'static, NoopRawMutex, SpiBus, Output<'static>>;
 
 pub async fn test_sd(sd_spi: SdSpi) {
     info!("Test SD card");
