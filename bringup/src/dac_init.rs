@@ -287,7 +287,10 @@ bind_interrupts!(struct Irqs {
 
 device_driver::compile!(manifest: "cs43131.ddsl");
 
-pub async fn test_dac_init(rd: I2CResources) {
+type DacType = DACInterface<embassy_rp::i2c::I2c<'static, I2C1, embassy_rp::i2c::Async>, Output<'static>, Input<'static>, embassy_time::Delay>;
+
+#[must_use]
+pub async fn test_dac_init(rd: I2CResources) -> Cs43131<DacType> {
     let i2c = embassy_rp::i2c::I2c::new_async(rd.i2c, rd.scl, rd.sda, Irqs, Config::default());
 
     let interface = DACInterface::new(
@@ -540,4 +543,6 @@ pub async fn test_dac_init(rd: I2CResources) {
         // Can now start sending I2S data
         info!("end init sequence");
     }
+
+    dac
 }

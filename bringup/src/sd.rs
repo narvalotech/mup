@@ -2,15 +2,17 @@
 
 use defmt::*;
 use defmt_rtt as _;
-use embassy_rp::gpio::{Level, Output};
-use embassy_rp::spi::{Config as SpiConfig, Spi};
 use embassy_time::{Delay};
-use embedded_hal_bus::spi::ExclusiveDevice;
 use embedded_sdmmc::{SdCard, TimeSource, Timestamp, VolumeIdx, VolumeManager};
 use core::ops::ControlFlow;
 use panic_probe as _;
 
-use crate::SdResources;
+// spi stuff
+use embassy_sync::blocking_mutex::raw::NoopRawMutex;
+use embassy_embedded_hal::shared_bus::blocking::spi::SpiDeviceWithConfig;
+use embassy_rp::spi::{Spi, Config as SpiConfig, Blocking};
+use embassy_rp::gpio::Output;
+use embassy_rp::peripherals::SPI1;
 
 /// embedded-sdmmc needs a time source for file timestamps. We don't have an
 /// RTC here, so just return a fixed bogus time.
@@ -29,17 +31,14 @@ impl TimeSource for DummyTimesource {
     }
 }
 
-pub async fn test_sd(rsd: SdResources) {
+// FIXME: move to own types crate
+type Spi1Bus = Spi<'static, SPI1, Blocking>;
+type SdSpi = SpiDeviceWithConfig<'static, NoopRawMutex, Spi1Bus, Output<'static>>;
+
+pub async fn test_sd(sd_spi: SdSpi) {
     info!("Test SD card");
 
-    let mut spi_config = SpiConfig::default();
-    spi_config.frequency = 400_000;
-
-    let spi = Spi::new_blocking(rsd.spi, rsd.sck, rsd.mosi, rsd.miso, spi_config);
-    let cs = Output::new(rsd.cs, Level::High);
-
-    let spi_dev = unwrap!(ExclusiveDevice::new(spi, cs, Delay).map_err(|_| ()));
-    let sdcard = SdCard::new(spi_dev, Delay);
+    let sdcard = SdCard::new(sd_spi, Delay);
 
     info!(
         "Card size: {} bytes",
@@ -50,7 +49,7 @@ pub async fn test_sd(rsd: SdResources) {
         // It's now safe to raise the clock for faster block reads/writes.
         let mut fast_config = SpiConfig::default();
         fast_config.frequency = 16_000_000;
-        sdcard.spi(|spi_dev| spi_dev.bus_mut().set_config(&fast_config));
+        sdcard.spi(|spi_dev| spi_dev.set_config(fast_config));
     }
 
     let volume_mgr = VolumeManager::new(sdcard, DummyTimesource());
