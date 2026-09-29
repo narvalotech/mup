@@ -90,3 +90,5 @@ async fn main(_spawner: Spawner) {
 fn panic() -> ! {
     cortex_m::asm::udf()
 }
+
+device_driver::compile!(manifest: "cap1296.ddsl");

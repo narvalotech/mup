@@ -1,0 +1,83 @@
+device Cap1296 {
+    register-address-type: u8,
+    default-byte-order: LE,
+    default-access: RW,
+
+    register SensorInputConfiguration {
+        address: 0x21,
+        reset: 0x3f,
+        fields: fieldset _ {
+            size-bytes: 1,
+            field CS1_EN 0,
+            field CS2_EN 1,
+            field CS3_EN 2,
+            field CS4_EN 3,
+            field CS5_EN 4,
+            field CS6_EN 5,
+        },
+    },
+
+    register SensitivityControl {
+        address: 0x1f,
+        reset: 0x2f,
+        fields: fieldset _ {
+            size-bytes: 1,
+            field base_shift 3:0 -> _ as
+            enum _ {
+                x1: 0,
+                x2: 1,
+                x4: 2,
+                x8: 3,
+                x16: 4,
+                x32: 5,
+                x64: 6,
+                x128: 7,
+                x256: 8,
+                Reserved: catch-all _,
+            },
+            field delta_sense 6:4 -> _ as
+            enum _ {
+                x128: 0,        // most sensitive
+                x64: 1,
+                x32: 2,         // default
+                x16: 3,
+                x8: 4,
+                x4: 5,
+                x2: 6,
+                x1: 7,          // least sensitive
+            },
+        },
+    },
+    register AveragingAndSamplingConfiguration {
+        address: 0x24,
+        reset: 0x39,
+        fields: fieldset _ {
+            size-bytes: 1,
+            field cycle_time 1:0 -> _ as
+            enum _ {
+                ms35: 0,
+                ms70: 1,        // default
+                ms105: 2,
+                ms140: 3,
+            },
+            field samp_time 3:2 -> _ as
+            enum _ {
+                us320: 0,
+                us640: 1,
+                us1280: 2,      // default
+                us2560: 3,
+            },
+            field avg 6:4 -> _ as
+            enum _ {
+                s1: 0,
+                s2: 1,
+                s4: 2,
+                s8: 3,          // default
+                s16: 4,
+                s32: 5,
+                s64: 6,
+                s128: 7,
+            },
+        },
+    },
+}
