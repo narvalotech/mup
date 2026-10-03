@@ -3,7 +3,71 @@ device Cap1296 {
     default-byte-order: LE,
     default-access: RW,
 
-    register SensorInputConfiguration {
+    register MainControl {
+        address: 0x00,
+        reset: 0x00,
+        fields: fieldset _ {
+            size-bytes: 1,
+            field INT 0,        /// clear this to clear input ISR bits
+            field COMBO 1,
+            /// Analog gain for standby state. Only relevant if COMBO is set.
+            field C_GAIN 3:2 -> _ as
+            enum _ {
+                Gain1: 0,
+                Gain2: 1,
+                Gain4: 2,
+                Gain8: 3,
+            },
+            field DSLEEP 4,
+            /// Analog gain for active state.
+            field GAIN 7:6 -> _ as
+            enum _ {
+                Gain1: 0,
+                Gain2: 1,
+                Gain4: 2,
+                Gain8: 3,
+            },
+        },
+    },
+
+    register GeneralStatus {
+        address: 0x02,
+        reset: 0x00,
+        access: RO,
+        fields: fieldset _ {
+            size-bytes: 1,
+            /// a touch has been detected
+            field TOUCH 0,
+            /// inputs exceed MTP threshold
+            field MTP 1,
+            /// multiple-touch detection is blocking touches
+            field MULT 2,
+            /// power button has been held
+            field PWR 3,
+            /// analog calibration failure
+            field ACAL_FAIL 5,
+            /// Base count is out of limit
+            field BC_OUT 6,
+        },
+    },
+
+    register InputStatus {
+        address: 0x03,
+        reset: 0x00,
+        access: RO,
+        // True means a touch is detected. Cleared when INT bit is cleared.
+        fields: fieldset _ {
+            size-bytes: 1,
+            field CS1 0,
+            field CS2 1,
+            field CS3 2,
+            field CS4 3,
+            field CS5 4,
+            field CS6 5,
+        },
+    },
+
+    register SensorInputEnable {
         address: 0x21,
         reset: 0x3f,
         fields: fieldset _ {
@@ -14,6 +78,56 @@ device Cap1296 {
             field CS4_EN 3,
             field CS5_EN 4,
             field CS6_EN 5,
+        },
+    },
+
+    register SensorInputConfiguration {
+        address: 0x22,
+        reset: 0xa4,
+        fields: fieldset _ {
+            size-bytes: 1,
+            /// Time between interrupt assertions when auto-repeat is enabled
+            field RPT_RATE 3:0 -> _ as
+            enum _ {
+                ms35: 0b0000,
+                ms70: 0b0001,
+                ms105: 0b0010,
+                ms140: 0b0011,
+                ms175: 0b0100,  // default
+                ms210: 0b0101,
+                ms245: 0b0110,
+                ms280: 0b0111,
+                ms315: 0b1000,
+                ms350: 0b1001,
+                ms385: 0b1010,
+                ms420: 0b1011,
+                ms455: 0b1100,
+                ms490: 0b1101,
+                ms525: 0b1110,
+                ms560: 0b1111,
+            },
+
+            /// Maximum time a sensor pad is allowed to be touched until the
+            /// next recalibration.
+            field MAX_DUR 7:4 -> _ as
+            enum _ {
+                ms560: 0,
+                ms840: 1,
+                ms1120: 2,
+                ms1400: 3,
+                ms1680: 4,
+                ms2240: 5,
+                ms2800: 6,
+                ms3360: 7,
+                ms3920: 8,
+                ms4480: 9,
+                ms5600: 0b1010,
+                ms6720: 0b1011,
+                ms7840: 0b1100,
+                ms8906: 0b1101,
+                ms10080: 0b1110,
+                ms11200: 0b1111,
+            },
         },
     },
 
@@ -77,6 +191,40 @@ device Cap1296 {
                 s32: 5,
                 s64: 6,
                 s128: 7,
+            },
+        },
+    },
+
+    register SensorInputDeltaCount[6 stride 1] {
+        address: 0x10,
+        reset: 0x00,
+        fields: fieldset _ {
+            size-bytes: 1,
+            /// Raw value compared to the threshold to detect touches.
+            field COUNT 7:0 -> i8,
+        },
+    },
+
+    register SensorInputThreshold[6 stride 1] {
+        address: 0x30,
+        reset: 0x40,
+        fields: fieldset _ {
+            size-bytes: 1,
+            field input_threshold 6:0,
+        },
+    },
+
+    register SensorInputNoiseThreshold {
+        address: 0x38,
+        reset: 0x01,
+        fields: fieldset _ {
+            size-bytes: 1,
+            field CS1_BN_TH 1:0 -> _ as
+            enum _ {
+                thr_25: 0,
+                thr_37_5: 1,
+                thr_50: 2,
+                thr_62_5: 3,
             },
         },
     },
