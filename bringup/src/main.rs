@@ -69,8 +69,8 @@ async fn main(_spawner: Spawner) {
     display_cfg.phase = spi::Phase::CaptureOnSecondTransition;
     display_cfg.polarity = spi::Polarity::IdleHigh;
     let cs_display = Output::new(r.spi.cs_disp, Level::High);
-    let _spi_dev_display = SpiDeviceWithConfig::new(spi_bus, cs_display, display_cfg);
-    // test_display(r.disp, spi_dev_display).await;
+    let spi_dev_display = SpiDeviceWithConfig::new(spi_bus, cs_display, display_cfg);
+    test_display(r.disp, spi_dev_display).await;
 
     let mut sd_cfg = SpiConfig::default();
     sd_cfg.frequency = SD_FREQ;
@@ -78,8 +78,9 @@ async fn main(_spawner: Spawner) {
     let spi_dev_sd = SpiDeviceWithConfig::new(spi_bus, cs_sd, sd_cfg);
     test_sd(spi_dev_sd).await;
 
-    let _dac = test_dac_init(r.i2c).await; // keep dac driver alive
-    test_dac(r.dac).await;
+    // DAC not soldered
+    // let _dac = test_dac_init(r.i2c).await; // keep dac driver alive
+    // test_dac(r.dac).await;
 
     loop {
         Timer::after_secs(1).await;
