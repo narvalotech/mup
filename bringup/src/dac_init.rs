@@ -274,16 +274,13 @@ impl<I2C: I2c, R: OutputPin, I: InputPin, D: DelayNs>
     }
 }
 
-use embassy_rp::bind_interrupts;
-use embassy_rp::i2c::{Config, InterruptHandler};
+use embassy_rp::i2c::{Config};
 use embassy_rp::{peripherals::I2C1};
 use embassy_rp::gpio::{Level, Pull, Input, Output};
 use defmt::*;
 use defmt_rtt as _;
 
-bind_interrupts!(struct Irqs {
-    I2C1_IRQ => InterruptHandler<I2C1>;
-});
+use crate::pinout_prod as pinout;
 
 device_driver::compile!(manifest: "cs43131.ddsl");
 
@@ -291,7 +288,7 @@ type DacType = DACInterface<embassy_rp::i2c::I2c<'static, I2C1, embassy_rp::i2c:
 
 #[must_use]
 pub async fn test_dac_init(rd: I2CResources) -> Cs43131<DacType> {
-    let i2c = embassy_rp::i2c::I2c::new_async(rd.i2c, rd.scl, rd.sda, Irqs, Config::default());
+    let i2c = embassy_rp::i2c::I2c::new_async(rd.i2c, rd.scl, rd.sda, pinout::Irqs, Config::default());
 
     let interface = DACInterface::new(
         i2c,

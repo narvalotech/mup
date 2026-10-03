@@ -2,6 +2,7 @@ device Cap1296 {
     register-address-type: u8,
     default-byte-order: LE,
     default-access: RW,
+    register-address-mode: indexed,
 
     register MainControl {
         address: 0x00,

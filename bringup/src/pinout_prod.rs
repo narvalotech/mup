@@ -89,6 +89,12 @@ assign_resources! {
 }
 
 use embassy_rp::spi::{Spi, Blocking};
+use embassy_rp::peripherals::{SPI1, I2C1};
+use embassy_rp::bind_interrupts;
+use embassy_rp::i2c::{InterruptHandler};
 
-use embassy_rp::peripherals::SPI1;
 pub type SpiBus = Spi<'static, SPI1, Blocking>;
+
+bind_interrupts!(pub struct Irqs {
+    I2C1_IRQ => InterruptHandler<I2C1>;
+});

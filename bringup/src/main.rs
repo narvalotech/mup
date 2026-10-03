@@ -17,6 +17,7 @@ use embassy_rp::gpio::{Output, Level};
 use static_cell::StaticCell;
 use core::cell::RefCell;
 
+pub mod cap;
 pub mod sd;
 pub mod disp;
 pub mod dac;
@@ -36,6 +37,8 @@ use crate::disp::test_display;
 use crate::dac::test_dac;
 #[allow(unused_imports)]
 use crate::dac_init::test_dac_init;
+#[allow(unused_imports)]
+use crate::cap::test_cap;
 
 #[unsafe(link_section = ".start_block")]
 #[used]
@@ -78,6 +81,8 @@ async fn main(_spawner: Spawner) {
     let spi_dev_sd = SpiDeviceWithConfig::new(spi_bus, cs_sd, sd_cfg);
     test_sd(spi_dev_sd).await;
 
+    let _cap = test_cap(r.i2c).await;
+
     // DAC not soldered
     // let _dac = test_dac_init(r.i2c).await; // keep dac driver alive
     // test_dac(r.dac).await;
@@ -91,5 +96,3 @@ async fn main(_spawner: Spawner) {
 fn panic() -> ! {
     cortex_m::asm::udf()
 }
-
-device_driver::compile!(manifest: "cap1296.ddsl");
