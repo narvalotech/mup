@@ -116,10 +116,10 @@ pub async fn test_cap(rd: I2CResources) -> Cap1296<CapType> {
     {
         info!("start init sequence");
 
-        for _ in 0..10 {
+        for _ in 0..1000 {
             let val = cap.sensor_input_delta_count().read_at_async(3).await.unwrap().count();
             info!("val: {}", val);
-            embassy_time::Delay.delay_ms(1000).await;
+            embassy_time::Delay.delay_ms(100).await;
         }
 
         info!("end init sequence");
