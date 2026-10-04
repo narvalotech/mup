@@ -141,7 +141,7 @@
     // 3. [F0000] Wait for PDN_DONE_INT
     // 4. [20000] Power down ASP PDN_ASP = 1
 
-use crate::I2CResources;
+use crate::DacResources;
 use embedded_hal_1::digital::{OutputPin, InputPin};
 use embedded_hal_async::{delay::DelayNs, i2c::I2c, i2c::Operation};
 
@@ -274,9 +274,9 @@ impl<I2C: I2c, R: OutputPin, I: InputPin, D: DelayNs>
     }
 }
 
-use embassy_rp::i2c::{Config};
-use embassy_rp::{peripherals::I2C1};
 use embassy_rp::gpio::{Level, Pull, Input, Output};
+use embassy_embedded_hal::shared_bus::asynch::i2c::I2cDevice;
+use embassy_sync::blocking_mutex::raw::NoopRawMutex;
 use defmt::*;
 use defmt_rtt as _;
 
@@ -284,12 +284,11 @@ use crate::pinout_prod as pinout;
 
 device_driver::compile!(manifest: "cs43131.ddsl");
 
-type DacType = DACInterface<embassy_rp::i2c::I2c<'static, I2C1, embassy_rp::i2c::Async>, Output<'static>, Input<'static>, embassy_time::Delay>;
+type DacI2c = I2cDevice<'static, NoopRawMutex, pinout::I2cBus>;
+type DacType = DACInterface<DacI2c, Output<'static>, Input<'static>, embassy_time::Delay>;
 
 #[must_use]
-pub async fn test_dac_init(rd: I2CResources) -> Cs43131<DacType> {
-    let i2c = embassy_rp::i2c::I2c::new_async(rd.i2c, rd.scl, rd.sda, pinout::Irqs, Config::default());
-
+pub async fn test_dac_init(rd: DacResources, i2c: DacI2c) -> Cs43131<DacType> {
     let interface = DACInterface::new(
         i2c,
         Output::new(rd.reset, Level::Low),

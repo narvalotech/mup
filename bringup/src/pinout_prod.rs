@@ -59,8 +59,7 @@ assign_resources! {
         i2c: I2C1,
         sda: PIN_18,
         scl: PIN_19,
-        reset: PIN_24,
-        interrupt: PIN_16,
+        interrupt_cap: PIN_4,
     },
 
     dac: DacResources {
@@ -69,6 +68,8 @@ assign_resources! {
         sclk: PIN_20,
         lrck: PIN_21,
         din: PIN_22,
+        reset: PIN_24,
+        interrupt: PIN_16,
     },
 
     spi: SpiResources {
@@ -92,8 +93,11 @@ use embassy_rp::spi::{Spi, Blocking};
 use embassy_rp::peripherals::{SPI1, I2C1};
 use embassy_rp::bind_interrupts;
 use embassy_rp::i2c::{InterruptHandler};
+use embassy_rp::i2c;
 
 pub type SpiBus = Spi<'static, SPI1, Blocking>;
+
+pub type I2cBus = i2c::I2c<'static, I2C1, i2c::Async>;
 
 bind_interrupts!(pub struct Irqs {
     I2C1_IRQ => InterruptHandler<I2C1>;

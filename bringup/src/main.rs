@@ -13,9 +13,14 @@ use embassy_sync::blocking_mutex::raw::NoopRawMutex;
 use embassy_sync::blocking_mutex::Mutex;
 use embassy_rp::spi::{Spi, Config as SpiConfig};
 use embassy_rp::spi;
-use embassy_rp::gpio::{Output, Level};
+use embassy_rp::gpio::{Output, Input, Level, Pull};
 use static_cell::StaticCell;
 use core::cell::RefCell;
+
+// i2c stuff
+use embassy_rp::i2c;
+use embassy_embedded_hal::shared_bus::asynch::i2c::I2cDevice;
+use embassy_sync::mutex::Mutex as AsyncMutex;
 
 pub mod cap;
 pub mod sd;
@@ -49,6 +54,8 @@ const SD_FREQ: u32 = 400_000;
 
 static SPI_BUS: StaticCell<Mutex<NoopRawMutex, RefCell<SpiBus>>> = StaticCell::new();
 
+static I2C_BUS: StaticCell<AsyncMutex<NoopRawMutex, pinout::I2cBus>> = StaticCell::new();
+
 #[embassy_executor::main]
 async fn main(_spawner: Spawner) {
     let p = embassy_rp::init(Default::default());
@@ -81,11 +88,20 @@ async fn main(_spawner: Spawner) {
     let spi_dev_sd = SpiDeviceWithConfig::new(spi_bus, cs_sd, sd_cfg);
     test_sd(spi_dev_sd).await;
 
-    let _cap = test_cap(r.i2c).await;
+    let i2c = i2c::I2c::new_async(
+        r.i2c.i2c,
+        r.i2c.scl,
+        r.i2c.sda,
+        pinout::Irqs,
+        i2c::Config::default(),
+    );
+    let i2c_bus: &'static AsyncMutex<NoopRawMutex, pinout::I2cBus> = I2C_BUS.init(AsyncMutex::new(i2c));
+    let i2c_dev_cap = I2cDevice::new(i2c_bus);
+    let _cap = test_cap(i2c_dev_cap, Input::new(r.i2c.interrupt_cap, Pull::Up)).await;
 
     // DAC not soldered
-    // let _dac = test_dac_init(r.i2c).await; // keep dac driver alive
-    // test_dac(r.dac).await;
+    // let i2c_dev_dac = I2cDevice::new(i2c_bus);
+    // let _dac = test_dac_init(r.dac, i2c_dev_dac).await; // keep dac driver alive
 
     loop {
         Timer::after_secs(1).await;

@@ -1,4 +1,3 @@
-use crate::I2CResources;
 use embedded_hal_1::digital::{InputPin};
 use embedded_hal_async::{delay::DelayNs, i2c::I2c, i2c::Operation};
 
@@ -89,9 +88,9 @@ impl<I2C: I2c, I: InputPin, D: DelayNs>
     }
 }
 
-use embassy_rp::i2c::{Config};
-use embassy_rp::{peripherals::I2C1};
-use embassy_rp::gpio::{Pull, Input};
+use embassy_rp::gpio::{Input};
+use embassy_embedded_hal::shared_bus::asynch::i2c::I2cDevice;
+use embassy_sync::blocking_mutex::raw::NoopRawMutex;
 use defmt::*;
 use defmt_rtt as _;
 
@@ -99,18 +98,13 @@ use crate::pinout_prod as pinout;
 
 device_driver::compile!(manifest: "cap1296.ddsl");
 
-type CapType = CAPInterface<embassy_rp::i2c::I2c<'static, I2C1, embassy_rp::i2c::Async>, Input<'static>, embassy_time::Delay>;
+type CapI2c = I2cDevice<'static, NoopRawMutex, pinout::I2cBus>;
+type CapType = CAPInterface<CapI2c, Input<'static>, embassy_time::Delay>;
+
 
 #[must_use]
-pub async fn test_cap(rd: I2CResources) -> Cap1296<CapType> {
-    let i2c = embassy_rp::i2c::I2c::new_async(rd.i2c, rd.scl, rd.sda, pinout::Irqs, Config::default());
-
-    let interface = CAPInterface::new(
-        i2c,
-        Input::new(rd.interrupt, Pull::Up),
-        embassy_time::Delay,
-    );
-
+pub async fn test_cap(i2c: CapI2c, interrupt: Input<'static>) -> Cap1296<CapType> {
+    let interface = CAPInterface::new(i2c, interrupt, embassy_time::Delay);
     let mut cap = Cap1296::new(interface);
 
     {
