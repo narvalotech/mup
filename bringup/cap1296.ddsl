@@ -148,6 +148,7 @@ device Cap1296 {
                 x64: 6,
                 x128: 7,
                 x256: 8,
+                // default: 0b1111 -> also x256
                 Reserved: catch-all _,
             },
             field delta_sense 6:4 -> _ as
@@ -199,6 +200,7 @@ device Cap1296 {
     register SensorInputDeltaCount[6 stride 1] {
         address: 0x10,
         reset: 0x00,
+        access: RO,
         fields: fieldset _ {
             size-bytes: 1,
             /// Raw value compared to the threshold to detect touches.

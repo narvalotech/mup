@@ -108,15 +108,37 @@ pub async fn test_cap(i2c: CapI2c, interrupt: Input<'static>) -> Cap1296<CapType
     let mut cap = Cap1296::new(interface);
 
     {
-        info!("start init sequence");
+        info!("configure CAP");
+
+        cap.main_control().write_async(|w| {
+            w.set_gain(Gain::Gain1);
+        }).await.unwrap();
+
+        cap.sensitivity_control().write_async(|w| {
+            w.set_base_shift(BaseShift::X256);
+            w.set_delta_sense(DeltaSense::X2);
+        }).await.unwrap();
+
+        cap.averaging_and_sampling_configuration().write_async(|w| {
+            w.set_samp_time(SampTime::Us1280);
+            w.set_avg(Avg::S8);
+        }).await.unwrap();
+
+        info!("start reading CAP");
 
         for _ in 0..1000 {
-            let val = cap.sensor_input_delta_count().read_at_async(3).await.unwrap().count();
-            info!("val: {}", val);
+            let val: [SensorInputDeltaCount; 6] = cap.sensor_input_delta_count().read_array_at_async(0).await.unwrap();
+            info!("{} | {} | {} | {} | {}",
+                  val[5].count().abs(),
+                  val[4].count().abs(),
+                  val[3].count().abs(),
+                  val[2].count().abs(),
+                  val[1].count().abs(),
+            );
             embassy_time::Delay.delay_ms(100).await;
         }
 
-        info!("end init sequence");
+        info!("done reading CAP");
     }
 
     cap
