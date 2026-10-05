@@ -113,10 +113,33 @@ type TouchMask = u8;
 pub async fn get_touch(cap: &mut Cap1296<CapType>) -> TouchMask {
     let r = cap.input_status().read_async().await.unwrap();
     cap.main_control().write_async(|w| {
-        w.set_int(false);
+        w.set_int(false);       // this clears the touch bitmask
     }).await.unwrap();
 
     r.bf() as TouchMask
+}
+
+pub async fn get_raw(cap: &mut Cap1296<CapType>) -> [i8; 6] {
+    let vals: [SensorInputDeltaCount; 6] = cap.sensor_input_delta_count().read_array_at_async(0).await.unwrap();
+    vals.map(|x| x.count().abs())
+}
+
+pub async fn wait_touch(cap: &mut Cap1296<CapType>, sleep: bool) {
+    cap.main_control().write_async(|w| {
+        w.set_int(false); // clear ISR first
+        if sleep {
+            w.set_stby(true);
+        }
+    }).await.unwrap();
+
+    // suspend until LOW
+    cap.interface.interrupt_pin.wait_for_low().await;
+
+    if sleep {
+        cap.main_control().write_async(|w| {
+            w.set_stby(false);
+        }).await.unwrap();
+    }
 }
 
 #[must_use]
@@ -140,26 +163,36 @@ pub async fn test_cap(i2c: CapI2c, interrupt: Input<'static>) -> Cap1296<CapType
             w.set_avg(Avg::S8);
         }).await.unwrap();
 
+        cap.standby_channel().write_async(|w| {
+            w.set_cs_1_stby(false);
+            w.set_cs_2_stby(true);
+            w.set_cs_3_stby(true);
+            w.set_cs_4_stby(true);
+            w.set_cs_5_stby(true);
+            w.set_cs_6_stby(true);
+        }).await.unwrap();
+
+        cap.standby_sensitivity().write_async(|w| {
+            w.set_stby_sense(StbySense::X2);
+        }).await.unwrap();
+
         info!("start reading CAP");
 
-        // Interface for this driver:
-        // - interrupt for touch -> go into active immediately
-        // - polling interface: get_raw() -> []
-        // - get_touch() -> bitmask
-        // - sleep()
-
         for _ in 0..1000 {
-            let val: [SensorInputDeltaCount; 6] = cap.sensor_input_delta_count().read_array_at_async(0).await.unwrap();
-            let mask = get_touch(&mut cap).await;
-            info!("{} | {} | {} | {} | {} | M {}",
-                  val[5].count().abs(),
-                  val[4].count().abs(),
-                  val[3].count().abs(),
-                  val[2].count().abs(),
-                  val[1].count().abs(),
-                  mask,
-            );
-            embassy_time::Delay.delay_ms(100).await;
+            wait_touch(&mut cap, true).await;
+            for _ in 0..10 {
+                let counts = get_raw(&mut cap).await;
+                let mask = get_touch(&mut cap).await;
+                info!("{} | {} | {} | {} | {} | M {}",
+                      counts[5],
+                      counts[4],
+                      counts[3],
+                      counts[2],
+                      counts[1],
+                      mask,
+                );
+                embassy_time::Delay.delay_ms(100).await;
+            }
         }
 
         info!("done reading CAP");

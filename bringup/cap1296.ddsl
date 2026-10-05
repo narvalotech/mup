@@ -20,6 +20,7 @@ device Cap1296 {
                 Gain8: 3,
             },
             field DSLEEP 4,
+            field STBY 5,
             /// Analog gain for active state.
             field GAIN 7:6 -> _ as
             enum _ {
@@ -230,6 +231,39 @@ device Cap1296 {
                 thr_37_5: 1,
                 thr_50: 2,
                 thr_62_5: 3,
+            },
+        },
+    },
+
+    register StandbyChannel {
+        address: 0x40,
+        reset: 0x00,
+        fields: fieldset _ {
+            size-bytes: 1,
+            field CS1_STBY 0,
+            field CS2_STBY 1,
+            field CS3_STBY 2,
+            field CS4_STBY 3,
+            field CS5_STBY 4,
+            field CS6_STBY 5,
+        },
+    },
+
+    register StandbySensitivity {
+        address: 0x42,
+        reset: 0x02,
+        fields: fieldset _ {
+            size-bytes: 1,
+            field stby_sense 2:0 -> _ as
+            enum _ {
+                x128: 0,        // most sensitive
+                x64: 1,
+                x32: 2,         // default
+                x16: 3,
+                x8: 4,
+                x4: 5,
+                x2: 6,
+                x1: 7,          // least sensitive
             },
         },
     },
