@@ -142,61 +142,62 @@ pub async fn wait_touch(cap: &mut Cap1296<CapType>, sleep: bool) {
     }
 }
 
+pub async fn configure(cap: &mut Cap1296<CapType>) {
+    cap.main_control().write_async(|w| {
+        w.set_gain(Gain::Gain1);
+    }).await.unwrap();
+
+    cap.sensitivity_control().write_async(|w| {
+        w.set_base_shift(BaseShift::X256);
+        w.set_delta_sense(DeltaSense::X2);
+    }).await.unwrap();
+
+    cap.averaging_and_sampling_configuration().write_async(|w| {
+        w.set_samp_time(SampTime::Us1280);
+        w.set_avg(Avg::S8);
+    }).await.unwrap();
+
+    cap.standby_channel().write_async(|w| {
+        w.set_cs_1_stby(false);
+        w.set_cs_2_stby(true);
+        w.set_cs_3_stby(true);
+        w.set_cs_4_stby(true);
+        w.set_cs_5_stby(true);
+        w.set_cs_6_stby(true);
+    }).await.unwrap();
+
+    cap.standby_sensitivity().write_async(|w| {
+        w.set_stby_sense(StbySense::X2);
+    }).await.unwrap();
+}
+
 #[must_use]
 pub async fn test_cap(i2c: CapI2c, interrupt: Input<'static>) -> Cap1296<CapType> {
     let mut cap = init(i2c, interrupt).await;
 
-    {
-        info!("configure CAP");
+    info!("configure CAP");
+    configure(&mut cap).await;
 
-        cap.main_control().write_async(|w| {
-            w.set_gain(Gain::Gain1);
-        }).await.unwrap();
+    info!("start reading CAP");
 
-        cap.sensitivity_control().write_async(|w| {
-            w.set_base_shift(BaseShift::X256);
-            w.set_delta_sense(DeltaSense::X2);
-        }).await.unwrap();
-
-        cap.averaging_and_sampling_configuration().write_async(|w| {
-            w.set_samp_time(SampTime::Us1280);
-            w.set_avg(Avg::S8);
-        }).await.unwrap();
-
-        cap.standby_channel().write_async(|w| {
-            w.set_cs_1_stby(false);
-            w.set_cs_2_stby(true);
-            w.set_cs_3_stby(true);
-            w.set_cs_4_stby(true);
-            w.set_cs_5_stby(true);
-            w.set_cs_6_stby(true);
-        }).await.unwrap();
-
-        cap.standby_sensitivity().write_async(|w| {
-            w.set_stby_sense(StbySense::X2);
-        }).await.unwrap();
-
-        info!("start reading CAP");
-
-        for _ in 0..1000 {
-            wait_touch(&mut cap, true).await;
-            for _ in 0..10 {
-                let counts = get_raw(&mut cap).await;
-                let mask = get_touch(&mut cap).await;
-                info!("{} | {} | {} | {} | {} | M {}",
-                      counts[5],
-                      counts[4],
-                      counts[3],
-                      counts[2],
-                      counts[1],
-                      mask,
-                );
-                embassy_time::Delay.delay_ms(100).await;
-            }
+    for _ in 0..1000 {
+        wait_touch(&mut cap, true).await;
+        for _ in 0..10 {
+            let counts = get_raw(&mut cap).await;
+            let mask = get_touch(&mut cap).await;
+            info!("{} | {} | {} | {} | {} | M {}",
+                  counts[5],
+                  counts[4],
+                  counts[3],
+                  counts[2],
+                  counts[1],
+                  mask,
+            );
+            embassy_time::Delay.delay_ms(100).await;
         }
-
-        info!("done reading CAP");
     }
+
+    info!("done reading CAP");
 
     cap
 }
