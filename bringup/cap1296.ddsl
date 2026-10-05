@@ -59,6 +59,8 @@ device Cap1296 {
         // True means a touch is detected. Cleared when INT bit is cleared.
         fields: fieldset _ {
             size-bytes: 1,
+            bit-overlap: allow,
+            field BF 5:0,
             field CS1 0,
             field CS2 1,
             field CS3 2,

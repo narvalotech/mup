@@ -102,10 +102,26 @@ type CapI2c = I2cDevice<'static, NoopRawMutex, pinout::I2cBus>;
 type CapType = CAPInterface<CapI2c, Input<'static>, embassy_time::Delay>;
 
 
+pub async fn init(i2c: CapI2c, interrupt: Input<'static>) -> Cap1296<CapType> {
+    let interface = CAPInterface::new(i2c, interrupt, embassy_time::Delay);
+
+    Cap1296::new(interface)
+}
+
+type TouchMask = u8;
+
+pub async fn get_touch(cap: &mut Cap1296<CapType>) -> TouchMask {
+    let r = cap.input_status().read_async().await.unwrap();
+    cap.main_control().write_async(|w| {
+        w.set_int(false);
+    }).await.unwrap();
+
+    r.bf() as TouchMask
+}
+
 #[must_use]
 pub async fn test_cap(i2c: CapI2c, interrupt: Input<'static>) -> Cap1296<CapType> {
-    let interface = CAPInterface::new(i2c, interrupt, embassy_time::Delay);
-    let mut cap = Cap1296::new(interface);
+    let mut cap = init(i2c, interrupt).await;
 
     {
         info!("configure CAP");
@@ -126,14 +142,22 @@ pub async fn test_cap(i2c: CapI2c, interrupt: Input<'static>) -> Cap1296<CapType
 
         info!("start reading CAP");
 
+        // Interface for this driver:
+        // - interrupt for touch -> go into active immediately
+        // - polling interface: get_raw() -> []
+        // - get_touch() -> bitmask
+        // - sleep()
+
         for _ in 0..1000 {
             let val: [SensorInputDeltaCount; 6] = cap.sensor_input_delta_count().read_array_at_async(0).await.unwrap();
-            info!("{} | {} | {} | {} | {}",
+            let mask = get_touch(&mut cap).await;
+            info!("{} | {} | {} | {} | {} | M {}",
                   val[5].count().abs(),
                   val[4].count().abs(),
                   val[3].count().abs(),
                   val[2].count().abs(),
                   val[1].count().abs(),
+                  mask,
             );
             embassy_time::Delay.delay_ms(100).await;
         }
