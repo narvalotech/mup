@@ -149,7 +149,7 @@ pub async fn configure(cap: &mut Cap1296<CapType>) {
 
     cap.sensitivity_control().write_async(|w| {
         w.set_base_shift(BaseShift::X256);
-        w.set_delta_sense(DeltaSense::X2);
+        w.set_delta_sense(DeltaSense::X4);
     }).await.unwrap();
 
     cap.averaging_and_sampling_configuration().write_async(|w| {
@@ -167,8 +167,25 @@ pub async fn configure(cap: &mut Cap1296<CapType>) {
     }).await.unwrap();
 
     cap.standby_sensitivity().write_async(|w| {
-        w.set_stby_sense(StbySense::X2);
+        w.set_stby_sense(StbySense::X4);
     }).await.unwrap();
+}
+
+pub fn get_mapped(counts: &[i8], full_scale: usize) -> u32 {
+    let span = full_scale as u32;
+    let last = (counts.len() - 1) as u32;
+
+    let mut acc: u32 = 0;
+    let mut sum: u32 = 0;
+
+    for (i, c) in counts.iter().enumerate() {
+        let r = i as u32 * span / last;
+        let m = (*c).max(0) as u32;
+        acc += m * r;
+        sum += m;
+    }
+
+    if sum == 0 {0} else {acc / sum}
 }
 
 #[must_use]
@@ -181,17 +198,20 @@ pub async fn test_cap(i2c: CapI2c, interrupt: Input<'static>) -> Cap1296<CapType
     info!("start reading CAP");
 
     for _ in 0..1000 {
+        info!("sleep");
         wait_touch(&mut cap, true).await;
         for _ in 0..10 {
             let counts = get_raw(&mut cap).await;
             let mask = get_touch(&mut cap).await;
-            info!("{} | {} | {} | {} | {} | M {}",
+            let mapped = get_mapped(&counts[1..], 100);
+            info!("{} | {} | {} | {} | {} | M {} | % {}",
                   counts[5],
                   counts[4],
                   counts[3],
                   counts[2],
                   counts[1],
                   mask,
+                  mapped,
             );
             embassy_time::Delay.delay_ms(100).await;
         }
