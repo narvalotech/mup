@@ -86,7 +86,13 @@ assign_resources! {
         dc: PIN_9,
         res: PIN_10,
         blk: PIN_11,
-    }
+    },
+
+    buttons: AnalogResources {
+        adc: ADC,
+        select_mux: PIN_26,
+        direction_mux: PIN_27,
+    },
 }
 
 use embassy_rp::spi::{Spi, Blocking};

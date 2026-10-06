@@ -22,6 +22,7 @@ use embassy_rp::i2c;
 use embassy_embedded_hal::shared_bus::asynch::i2c::I2cDevice;
 use embassy_sync::mutex::Mutex as AsyncMutex;
 
+pub mod buttons;
 pub mod cap;
 pub mod sd;
 pub mod disp;
@@ -32,7 +33,7 @@ pub mod pinout_prod;
 
 use crate::pinout_prod as pinout;
 // use crate::pinout_dev as pinout;
-use pinout::{SpiBus, SpiResources, ClockResources, DisplayResources, I2CResources, DacResources, AssignedResources};
+use pinout::{SpiBus, SpiResources, ClockResources, DisplayResources, I2CResources, DacResources, AnalogResources, AssignedResources};
 
 #[allow(unused_imports)]
 use crate::sd::test_sd;
@@ -44,6 +45,8 @@ use crate::dac::test_dac;
 use crate::dac_init::test_dac_init;
 #[allow(unused_imports)]
 use crate::cap::test_cap;
+#[allow(unused_imports)]
+use crate::buttons::test_buttons;
 
 #[unsafe(link_section = ".start_block")]
 #[used]
@@ -79,14 +82,14 @@ async fn main(_spawner: Spawner) {
     display_cfg.phase = spi::Phase::CaptureOnSecondTransition;
     display_cfg.polarity = spi::Polarity::IdleHigh;
     let cs_display = Output::new(r.spi.cs_disp, Level::High);
-    let spi_dev_display = SpiDeviceWithConfig::new(spi_bus, cs_display, display_cfg);
-    test_display(r.disp, spi_dev_display).await;
+    let _spi_dev_display = SpiDeviceWithConfig::new(spi_bus, cs_display, display_cfg);
+    // test_display(r.disp, spi_dev_display).await;
 
     let mut sd_cfg = SpiConfig::default();
     sd_cfg.frequency = SD_FREQ;
     let cs_sd = Output::new(r.spi.cs_sd, Level::High);
-    let spi_dev_sd = SpiDeviceWithConfig::new(spi_bus, cs_sd, sd_cfg);
-    test_sd(spi_dev_sd).await;
+    let _spi_dev_sd = SpiDeviceWithConfig::new(spi_bus, cs_sd, sd_cfg);
+    // test_sd(spi_dev_sd).await;
 
     let i2c = i2c::I2c::new_async(
         r.i2c.i2c,
@@ -97,7 +100,9 @@ async fn main(_spawner: Spawner) {
     );
     let i2c_bus: &'static AsyncMutex<NoopRawMutex, pinout::I2cBus> = I2C_BUS.init(AsyncMutex::new(i2c));
     let i2c_dev_cap = I2cDevice::new(i2c_bus);
-    let _cap = test_cap(i2c_dev_cap, Input::new(r.i2c.interrupt_cap, Pull::Up)).await;
+    // let _cap = test_cap(i2c_dev_cap, Input::new(r.i2c.interrupt_cap, Pull::Up)).await;
+
+    test_buttons(r.buttons).await;
 
     // DAC not soldered
     // let i2c_dev_dac = I2cDevice::new(i2c_bus);
